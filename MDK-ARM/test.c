@@ -1,5 +1,4 @@
 #include "test.h"
- 
 //---------------U8g2²âÊÔº¯Êý
  
 #define SEND_BUFFER_DISPLAY_MS(u8g2, ms)\
@@ -17,7 +16,7 @@ void testDrawProcess(u8g2_t *u8g2)
 		u8g2_ClearBuffer(u8g2); 
 			
 		char buff[20];
-		sprintf(buff,"%d%%",(int)(i/80.0*100));
+		//sprintf(buff,"%d%%",(int)(i/80.0*100));
 		
 		u8g2_SetFont(u8g2,u8g2_font_ncenB12_tf);
 		u8g2_DrawStr(u8g2,16,32,"STM32 U8g2");//×Ö·ûÏÔÊ¾

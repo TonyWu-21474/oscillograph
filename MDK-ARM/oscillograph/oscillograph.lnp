@@ -1,6 +1,7 @@
 --cpu=Cortex-M4.fp.sp
 "oscillograph\startup_stm32f411xe.o"
 "oscillograph\oled.o"
+"oscillograph\stm32_u8g2.o"
 "oscillograph\main.o"
 "oscillograph\gpio.o"
 "oscillograph\adc.o"
@@ -9,7 +10,6 @@
 "oscillograph\tim.o"
 "oscillograph\stm32f4xx_it.o"
 "oscillograph\stm32f4xx_hal_msp.o"
-"oscillograph\stm32_u8g2.o"
 "oscillograph\stm32f4xx_hal_adc.o"
 "oscillograph\stm32f4xx_hal_adc_ex.o"
 "oscillograph\stm32f4xx_ll_adc.o"
@@ -70,7 +70,7 @@
 "oscillograph\u8x8_string.o"
 "oscillograph\u8x8_u8toa.o"
 "oscillograph\u8x8_u16toa.o"
---strict --scatter "oscillograph\oscillograph.sct"
+--library_type=microlib --strict --scatter "oscillograph\oscillograph.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers
 --list "oscillograph.map" -o oscillograph\oscillograph.axf

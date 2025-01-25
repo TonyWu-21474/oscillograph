@@ -87,3 +87,49 @@ void OLED_OFF(void)
 	WriteCmd(0X10);  //关闭电荷泵
 	WriteCmd(0XAE);  //OLED休眠
 }
+// Parameters     : x,y -- 起始点坐标(x:0~127, y:0~7); ch[] -- 要显示的字符串; TextSize -- 字符大小(1:6*8 ; 2:8*16)
+// Description    : 显示codetab.h中的ASCII字符,有6*8和8*16可选择
+void OLED_ShowStr(unsigned char x, unsigned char y, unsigned char ch[], unsigned char TextSize)
+{
+	unsigned char c = 0,i = 0,j = 0;
+	switch(TextSize)
+	{
+		case 1:
+		{
+			while(ch[j] != '\0')
+			{
+				c = ch[j] - 32;
+				if(x > 126)
+				{
+					x = 0;
+					y++;
+				}
+				OLED_SetPos(x,y);
+				for(i=0;i<6;i++)
+					WriteDat(F6x8[c][i]);
+				x += 6;
+				j++;
+			}
+		}break;
+		case 2:
+		{
+			while(ch[j] != '\0')
+			{
+				c = ch[j] - 32;
+				if(x > 120)
+				{
+					x = 0;
+					y++;
+				}
+				OLED_SetPos(x,y);
+				for(i=0;i<8;i++)
+					WriteDat(F8X16[c*16+i]);
+				OLED_SetPos(x,y+1);
+				for(i=0;i<8;i++)
+					WriteDat(F8X16[c*16+i+8]);
+				x += 8;
+				j++;
+			}
+		}break;
+	}
+}

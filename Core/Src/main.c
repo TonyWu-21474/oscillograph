@@ -23,13 +23,12 @@
 #include "i2c.h"
 #include "tim.h"
 #include "gpio.h"
-#include "stm32_hal_legacy.h"
-#include "stm32_u8g2.h"
-#include "test.h"
-#include "u8g2.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "u8g2.h"
+#include "stm32_u8g2.h"
+#include "oled.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -100,6 +99,34 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 	//暂时考虑使用u8g2库完成绘图
+//	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_SET);
+//	OLED_Init();
+//	OLED_ON();
+//	OLED_CLS();
+//	OLED_ShowStr(20,3,"hello world",1);//这一部分代码没有问题，另外：不要在注释里打//
+	u8g2_t u8g2;
+	u8g2_FirstPage(&u8g2);
+	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
+//	do {
+//			u8g2_SetFontMode(&u8g2, 1);
+//			u8g2_SetFontDirection(&u8g2, 0);
+//			u8g2_SetFont(&u8g2, u8g2_font_inb24_mf);
+//			u8g2_DrawStr(&u8g2, 0, 20, "U");
+//			u8g2_SetFontDirection(&u8g2, 1);
+//			u8g2_SetFont(&u8g2, u8g2_font_inb30_mn);
+//			u8g2_DrawStr(&u8g2, 21, 8, "8");
+//			u8g2_SetFontDirection(&u8g2, 0);
+//			u8g2_SetFont(&u8g2, u8g2_font_inb24_mf);
+//			u8g2_DrawStr(&u8g2, 51, 30, "g");
+//			u8g2_DrawStr(&u8g2, 67, 30, "\xb2");
+//			u8g2_DrawHLine(&u8g2, 2, 35, 47);
+//			u8g2_DrawHLine(&u8g2, 3, 36, 47);
+//			u8g2_DrawVLine(&u8g2, 45, 32, 12);
+//			u8g2_DrawVLine(&u8g2, 46, 33, 12);
+//			u8g2_SetFont(&u8g2, u8g2_font_4x6_tr);
+//			u8g2_DrawStr(&u8g2, 1, 54, "github.com/olikraus/u8g2");
+//		} while (u8g2_NextPage(&u8g2));
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -107,14 +134,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-		u8g2_FirstPage(&u8g2);
-       do
-       {
-				 draw(&u8g2);
- 
-				 u8g2DrawTest(&u8g2);
-       } while (u8g2_NextPage(&u8g2));
-
+//		HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+//		HAL_Delay(250);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
