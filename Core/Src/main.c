@@ -23,7 +23,10 @@
 #include "i2c.h"
 #include "tim.h"
 #include "gpio.h"
-
+#include "stm32_hal_legacy.h"
+#include "stm32_u8g2.h"
+#include "test.h"
+#include "u8g2.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -104,6 +107,13 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+		u8g2_FirstPage(&u8g2);
+       do
+       {
+				 draw(&u8g2);
+ 
+				 u8g2DrawTest(&u8g2);
+       } while (u8g2_NextPage(&u8g2));
 
     /* USER CODE BEGIN 3 */
   }

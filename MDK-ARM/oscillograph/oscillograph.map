@@ -2566,7 +2566,7 @@ Removing Unused input sections from the image.
     Removing stm32_u8g2.o(.text), (0 bytes).
     Removing stm32_u8g2.o(.text.u8x8_byte_hw_i2c), (214 bytes).
     Removing stm32_u8g2.o(.ARM.exidx.text.u8x8_byte_hw_i2c), (8 bytes).
-    Removing stm32_u8g2.o(.text.u8x8_gpio_and_delay), (200 bytes).
+    Removing stm32_u8g2.o(.text.u8x8_gpio_and_delay), (202 bytes).
     Removing stm32_u8g2.o(.ARM.exidx.text.u8x8_gpio_and_delay), (8 bytes).
     Removing stm32_u8g2.o(.text.u8g2Init), (60 bytes).
     Removing stm32_u8g2.o(.ARM.exidx.text.u8g2Init), (8 bytes).
@@ -6527,7 +6527,7 @@ Removing Unused input sections from the image.
     Removing u8x8_u16toa.o(.ARM.exidx.text.u8x8_utoa), (8 bytes).
     Removing u8x8_u16toa.o(.bss.u8x8_u16toa.buf), (6 bytes).
 
-4025 unused section(s) (total 13965170 bytes) removed from the image.
+4025 unused section(s) (total 13965172 bytes) removed from the image.
 
 ==============================================================================
 
@@ -7265,28 +7265,28 @@ Image component sizes
 
       Code (inc. data)   RO Data    RW Data    ZI Data      Debug   Object Name
 
-       352          0          0          0        168       4980   adc.o
-        60          0          0          0          0       2820   dma.o
-       108          0          0          0          0       1508   gpio.o
-       264          0          0          0         84       5112   i2c.o
-       236          0          0          0          0       2805   main.o
-        64         26        408          0       1536        816   startup_stm32f411xe.o
-       204          0          0          5          4       6657   stm32f4xx_hal.o
-      1130          0          0          0          0       9846   stm32f4xx_hal_adc.o
-       482          0          0          0          0       9197   stm32f4xx_hal_cortex.o
-      1490          8          8          0          0       8423   stm32f4xx_hal_dma.o
-       866          0          0          0          0       5060   stm32f4xx_hal_gpio.o
-       676          0          0          0          0      37674   stm32f4xx_hal_i2c.o
-        74          0          0          0          0       1504   stm32f4xx_hal_msp.o
-      2612          0          0          0          0       7594   stm32f4xx_hal_rcc.o
-      2386         14          0          0          0      35810   stm32f4xx_hal_tim.o
-       254          0          0          0          0      15288   stm32f4xx_hal_tim_ex.o
-        50          0          0          0          0       1081   stm32f4xx_it.o
-        18          0         24          4          0       2550   system_stm32f4xx.o
-       502          0          0          0        144       6501   tim.o
+       352          0          0          0        168       4988   adc.o
+        60          0          0          0          0       2828   dma.o
+       108          0          0          0          0       1516   gpio.o
+       264          0          0          0         84       5120   i2c.o
+       236          0          0          0          0       2813   main.o
+        64         26        408          0       1536        828   startup_stm32f411xe.o
+       204          0          0          5          4       6665   stm32f4xx_hal.o
+      1130          0          0          0          0       9854   stm32f4xx_hal_adc.o
+       482          0          0          0          0       9205   stm32f4xx_hal_cortex.o
+      1490          8          8          0          0       8431   stm32f4xx_hal_dma.o
+       866          0          0          0          0       5068   stm32f4xx_hal_gpio.o
+       676          0          0          0          0      37682   stm32f4xx_hal_i2c.o
+        74          0          0          0          0       1512   stm32f4xx_hal_msp.o
+      2612          0          0          0          0       7602   stm32f4xx_hal_rcc.o
+      2386         14          0          0          0      35818   stm32f4xx_hal_tim.o
+       254          0          0          0          0      15296   stm32f4xx_hal_tim_ex.o
+        50          0          0          0          0       1093   stm32f4xx_it.o
+        18          0         24          4          0       2558   system_stm32f4xx.o
+       502          0          0          0        144       6509   tim.o
 
     ----------------------------------------------------------------------
-     11888         48        474         12       1940     165226   Object Totals
+     11888         48        474         12       1940     165386   Object Totals
          0          0         32          0          0          0   (incl. Generated)
         60          0          2          3          4          0   (incl. Padding)
 
@@ -7339,8 +7339,8 @@ Image component sizes
 
       Code (inc. data)   RO Data    RW Data    ZI Data      Debug   
 
-     12558         64        474         12       2036     165574   Grand Totals
-     12558         64        474         12       2036     165574   ELF Image Totals
+     12558         64        474         12       2036     165734   Grand Totals
+     12558         64        474         12       2036     165734   ELF Image Totals
      12558         64        474         12          0          0   ROM Totals
 
 ==============================================================================
