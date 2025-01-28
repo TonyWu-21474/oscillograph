@@ -98,14 +98,21 @@ int main(void)
   MX_I2C2_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-	//暂时考虑使用u8g2库完成绘图
+	//暂时考虑使用u8g2库完成绘图 1/28:u8g2有部分存在问题，暂时弃用
 //	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_SET);
-//	OLED_Init();
-//	OLED_ON();
-//	OLED_CLS();
-//	OLED_ShowStr(20,3,"hello world",1);//这一部分代码没有问题，另外：不要在注释里打//
-	u8g2_t u8g2;
-	u8g2_FirstPage(&u8g2);
+	OLED_Init();
+	OLED_ON();
+	OLED_CLS();
+	OLED_ShowStr(20,3,"hello world",1);//这一部分代码没有问题，另外：不要在注释里打//
+	//OLED_DrawPixel(0,0);
+	for(int i =0;i<128;i++)
+	{
+		OLED_DrawPixel(i,i/2);
+		OLED_DrawPixel(i,63-i/2);
+	}
+//	u8g2_t u8g2;
+//	u8g2_FirstPage(&u8g2);
+//	u8g2Init(&u8g2);
 	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
 //	do {
 //			u8g2_SetFontMode(&u8g2, 1);
@@ -134,8 +141,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-//		HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
-//		HAL_Delay(250);
+		HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+		HAL_Delay(250);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

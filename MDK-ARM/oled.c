@@ -133,3 +133,30 @@ void OLED_ShowStr(unsigned char x, unsigned char y, unsigned char ch[], unsigned
 		}break;
 	}
 }
+// 定义显存缓冲区，8页，每页128列（与SSD1306 GDDRAM结构一致）
+static uint8_t oled_buffer[8][128] = {0};
+
+// 新增函数：更新显存到OLED（类似OLED_ShowStr的即时写入逻辑）
+void OLED_UpdatePage(uint8_t page, uint8_t start_col) {
+    OLED_SetPos(start_col, page);
+    for (uint8_t col = start_col; col < 128; col++) {
+        WriteDat(oled_buffer[page][col]);
+    }
+}
+
+// 修改后的画点函数
+void OLED_DrawPixel(uint8_t x, uint8_t y) {
+    // 坐标校验（注意y范围是像素坐标0~63）
+    if (x >= 128 || y >= 64) return;
+
+    // 计算页和位
+    uint8_t page = y / 8;          // 页号0~7（与OLED_ShowStr的y参数对齐）
+    uint8_t bit_pos = y % 8;       // 页内位0~7
+
+    // 修改缓冲区
+    oled_buffer[page][x] |= (1 << bit_pos);
+
+    // 通过OLED_SetPos设置位置并更新单个字节（即时刷新）
+    OLED_SetPos(x, page);          // 复用OLED_ShowStr的位置设置逻辑
+    WriteDat(oled_buffer[page][x]);
+}

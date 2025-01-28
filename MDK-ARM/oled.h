@@ -36,5 +36,5 @@ void OLED_ShowChar(u8 x,u8 y,u8 chr,u8 Char_Size);
 u32 oled_pow(u8 m,u8 n);
 void OLED_ShowNum(u8 x,u8 y,u32 num,u8 len,u8 size2);//size2(16|12)
 void OLED_DrawGIF(unsigned char x0, unsigned char y0,unsigned char x1, unsigned char y1, unsigned char k, int m, unsigned char GIF[][m]);
-
+void OLED_DrawPixel(uint8_t x, uint8_t y);
 #endif

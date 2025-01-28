@@ -74,7 +74,7 @@ uint8_t u8x8_gpio_and_delay(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *ar
         HAL_Delay(arg_int);
         break;
     case U8X8_MSG_DELAY_I2C: // arg_int is the I2C speed in 100KHz, e.g. 4 = 400 KHz
-        HAL_Delay(1);
+        HAL_Delay(arg_int);
 				break;                    // arg_int=1: delay by 5us, arg_int = 4: delay by 1.25us
     case U8X8_MSG_GPIO_I2C_CLOCK: // arg_int=0: Output low at I2C clock pin
         break;                    // arg_int=1: Input dir with pullup high for I2C clock pin
