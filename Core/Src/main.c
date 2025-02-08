@@ -26,9 +26,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "u8g2.h"
-#include "stm32_u8g2.h"
 #include "oled.h"
+#include "math.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -38,6 +37,20 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define ADC_BUFFER_SIZE 256
+volatile uint32_t adcBuffer[ADC_BUFFER_SIZE]; // DMA数据缓冲区,每半缓冲区绘制一次图
+#define SAMPLE_RATE 500    // 如需 1000Hz，请改为 1000
+
+#if SAMPLE_RATE == 500
+  #define TIM_PERIOD (2000 - 1)  // 2ms 周期（假设定时器时钟为 1MHz）
+#elif SAMPLE_RATE == 1000
+  #define TIM_PERIOD (1000 - 1)  // 1ms 周期
+#else
+  #error "采样率仅支持 500 或 1000Hz"
+#endif
+#define ADC_MAX_VALUE 4095
+#define OLED_WIDTH    128
+#define OLED_HEIGHT   64
 
 /* USER CODE END PD */
 
@@ -55,12 +68,78 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void ProcessADCData(uint32_t* data, uint32_t length);
+void DisplayHalfBuffer(uint32_t *halfBuffer, uint32_t length);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+/**
+  * @brief DMA Half Transfer 完成回调函数.
+  * 当 DMA 将数据传输至 adcBuffer 一半时调用
+  */
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
+{
+  /* 处理缓冲区前半部分的数据 */
+	DisplayHalfBuffer((uint32_t*)&adcBuffer[0],ADC_BUFFER_SIZE / 2);
+  ProcessADCData((uint32_t*)&adcBuffer[0], ADC_BUFFER_SIZE / 2);
+}
 
+/**
+  * @brief DMA Transfer Complete 完成回调函数.
+  * 当 DMA 将数据传输完 adcBuffer 时调用
+  */
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+  /* 处理缓冲区后半部分的数据 */
+	DisplayHalfBuffer((uint32_t*)&adcBuffer[ADC_BUFFER_SIZE / 2],ADC_BUFFER_SIZE / 2);
+  ProcessADCData((uint32_t*)&adcBuffer[ADC_BUFFER_SIZE / 2], ADC_BUFFER_SIZE / 2);
+}
+/**
+  * @brief 处理采集的 ADC 数据
+  * @param data: 处理数据的起始地址
+  * @param length: 数据的长度
+  */
+void ProcessADCData(uint32_t* data, uint32_t length)
+{
+  uint32_t sum = 0;
+  for (uint32_t i = 0; i < length; i++)
+  {
+    sum += data[i];
+  }
+  uint32_t avg = sum / length;
+  // 后续处理：例如通过UART发送、存入全局变量等
+}
+void DisplayHalfBuffer(uint32_t *halfBuffer, uint32_t length)//传入任意长度和起始位置均可
+{
+    uint32_t x, y;
+    uint32_t samplesToDisplay = (length < OLED_WIDTH) ? length : OLED_WIDTH;
+
+    // 如有需要，首先清除显示（例如 OLED_Clear()）
+    // OLED_Clear();
+
+    for (x = 0; x < samplesToDisplay; x++)
+    {
+        /* 映射 ADC 数据到 y 坐标：
+         * scaled_y 计算为 ADC 数据按比例缩放到 0 ～ (OLED_HEIGHT-1) 范围内，
+         * 随后反转 y 坐标（OLED 顶部为0，底部为 OLED_HEIGHT-1）
+         */
+        y = (halfBuffer[x] * (OLED_HEIGHT - 1)) / ADC_MAX_VALUE;
+        y = (OLED_HEIGHT - 1) - y;
+
+        OLED_DrawPixel(x, y);
+    }
+
+    // 如有屏幕刷新函数，可在此调用（例如 OLED_UpdateScreen()）
+    // OLED_UpdateScreen();
+}
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  if(htim->Instance == TIM2)
+  {
+    HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+  }
+}
 /* USER CODE END 0 */
 
 /**
@@ -87,7 +166,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+	htim2.Init.Period = TIM_PERIOD;
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -98,51 +177,38 @@ int main(void)
   MX_I2C2_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-	//暂时考虑使用u8g2库完成绘图 1/28:u8g2有部分存在问题，暂时弃用
-//	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_SET);
+	if (HAL_TIM_Base_Start(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }//启动TIM2
+	HAL_TIM_Base_Start_IT(&htim2);
+	/* 启动 ADC 的 DMA 模式，在循环模式下自动将转换结果传送到 adcBuffer */
+  if (HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adcBuffer, ADC_BUFFER_SIZE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+	//暂时考虑使用u8g2库完成绘图 1/28:u8g2有部分存在问题，暂时弃用 2/8:移除u8g2
 	OLED_Init();
 	OLED_ON();
 	OLED_CLS();
 	OLED_ShowStr(20,3,"hello world",1);//这一部分代码没有问题，另外：不要在注释里打//
 	//OLED_DrawPixel(0,0);
-	for(int i =0;i<128;i++)
-	{
-		OLED_DrawPixel(i,i/2);
-		OLED_DrawPixel(i,63-i/2);
-	}
-//	u8g2_t u8g2;
-//	u8g2_FirstPage(&u8g2);
-//	u8g2Init(&u8g2);
+//	for(int i =0;i<128;i++)
+//	{
+//		OLED_DrawPixel(i,i/2);
+//		OLED_DrawPixel(i,63-i/2);
+//	}
 	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
-//	do {
-//			u8g2_SetFontMode(&u8g2, 1);
-//			u8g2_SetFontDirection(&u8g2, 0);
-//			u8g2_SetFont(&u8g2, u8g2_font_inb24_mf);
-//			u8g2_DrawStr(&u8g2, 0, 20, "U");
-//			u8g2_SetFontDirection(&u8g2, 1);
-//			u8g2_SetFont(&u8g2, u8g2_font_inb30_mn);
-//			u8g2_DrawStr(&u8g2, 21, 8, "8");
-//			u8g2_SetFontDirection(&u8g2, 0);
-//			u8g2_SetFont(&u8g2, u8g2_font_inb24_mf);
-//			u8g2_DrawStr(&u8g2, 51, 30, "g");
-//			u8g2_DrawStr(&u8g2, 67, 30, "\xb2");
-//			u8g2_DrawHLine(&u8g2, 2, 35, 47);
-//			u8g2_DrawHLine(&u8g2, 3, 36, 47);
-//			u8g2_DrawVLine(&u8g2, 45, 32, 12);
-//			u8g2_DrawVLine(&u8g2, 46, 33, 12);
-//			u8g2_SetFont(&u8g2, u8g2_font_4x6_tr);
-//			u8g2_DrawStr(&u8g2, 1, 54, "github.com/olikraus/u8g2");
-//		} while (u8g2_NextPage(&u8g2));
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+//		HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+//		HAL_Delay(250);
     /* USER CODE END WHILE */
-		HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
-		HAL_Delay(250);
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -208,6 +274,7 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+		HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
   }
   /* USER CODE END Error_Handler_Debug */
 }
