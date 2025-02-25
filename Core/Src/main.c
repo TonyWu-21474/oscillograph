@@ -37,21 +37,33 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ADC_BUFFER_SIZE 256
-volatile uint32_t adcBuffer[ADC_BUFFER_SIZE]; // DMAÊı¾İ»º³åÇø,Ã¿°ë»º³åÇø»æÖÆÒ»´ÎÍ¼
-#define SAMPLE_RATE 500    // ÈçĞè 1000Hz£¬Çë¸ÄÎª 1000
+#define UPDATE_RATE 10000UL  // ²ÉÑùÂÊ 10kHz
+// È«¾Ö±äÁ¿£ºÏàÎ»ÀÛ¼ÓÆ÷ºÍÕıÏÒ²¨ÆµÂÊ£¨µ¥Î» Hz£©
+volatile double phase = 0.0;
+volatile int counter = 0;
+volatile double sineFrequency = 1000.0;  // ÕıÏÒ²¨ÆµÂÊ£¬³õÊ¼Îª 1 kHz
+const double timeStep = 1.0 / UPDATE_RATE;  // Ã¿¸ö²ÉÑùµãµÄÊ±¼ä¼ä¸ô£¨Ãë£©
+#define ADC_BUFFER_SIZE 128
+#define SINE_TABLE_SIZE 128
+volatile uint16_t adcBuffer[ADC_BUFFER_SIZE]; // DMAÊı¾İ»º³åÇø,Ã¿°ë»º³åÇø»æÖÆÒ»´ÎÍ¼
+volatile uint8_t table[SINE_TABLE_SIZE]={0};//ÕıÏÒ±í
+volatile uint16_t adcValue = 0;
+#define SAMPLE_RATE 1000    // ÈçĞè 1000Hz£¬Çë¸ÄÎª 1000
 
 #if SAMPLE_RATE == 500
-  #define TIM_PERIOD (2000 - 1)  // 2ms ÖÜÆÚ£¨¼ÙÉè¶¨Ê±Æ÷Ê±ÖÓÎª 1MHz£©
+  #define TIM_PERIOD (2000 - 1)  // 2us ÖÜÆÚ£¨¼ÙÉè¶¨Ê±Æ÷Ê±ÖÓÎª 1MHz£©ÏÖÔÚÅäÖÃÎª100MHz
 #elif SAMPLE_RATE == 1000
-  #define TIM_PERIOD (1000 - 1)  // 1ms ÖÜÆÚ
+  #define TIM_PERIOD (1000 - 1)  // 1us ÖÜÆÚ
 #else
   #error "²ÉÑùÂÊ½öÖ§³Ö 500 »ò 1000Hz"
 #endif
 #define ADC_MAX_VALUE 4095
 #define OLED_WIDTH    128
 #define OLED_HEIGHT   64
-
+#define M_PI 3.14159
+#define GRID_TOP       8
+#define GRID_BOTTOM    63
+#define GRID_CELL_SIZE 8   //»æÖÆÍø¸ñ
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -68,8 +80,8 @@ volatile uint32_t adcBuffer[ADC_BUFFER_SIZE]; // DMAÊı¾İ»º³åÇø,Ã¿°ë»º³åÇø»æÖÆÒ»´
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-void ProcessADCData(uint32_t* data, uint32_t length);
-void DisplayHalfBuffer(uint32_t *halfBuffer, uint32_t length);
+float ProcessADCData(volatile uint16_t* data, uint32_t length);
+void DisplayHalfBuffer(volatile uint16_t *halfBuffer, uint32_t length);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -81,8 +93,8 @@ void DisplayHalfBuffer(uint32_t *halfBuffer, uint32_t length);
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 {
   /* ´¦Àí»º³åÇøÇ°°ë²¿·ÖµÄÊı¾İ */
-	DisplayHalfBuffer((uint32_t*)&adcBuffer[0],ADC_BUFFER_SIZE / 2);
-  ProcessADCData((uint32_t*)&adcBuffer[0], ADC_BUFFER_SIZE / 2);
+	DisplayHalfBuffer(&adcBuffer[0],ADC_BUFFER_SIZE / 2);
+  ProcessADCData(&adcBuffer[0], ADC_BUFFER_SIZE / 2);
 }
 
 /**
@@ -92,54 +104,374 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
   /* ´¦Àí»º³åÇøºó°ë²¿·ÖµÄÊı¾İ */
-	DisplayHalfBuffer((uint32_t*)&adcBuffer[ADC_BUFFER_SIZE / 2],ADC_BUFFER_SIZE / 2);
-  ProcessADCData((uint32_t*)&adcBuffer[ADC_BUFFER_SIZE / 2], ADC_BUFFER_SIZE / 2);
+	DisplayHalfBuffer(&adcBuffer[ADC_BUFFER_SIZE / 2],ADC_BUFFER_SIZE / 2);
+  ProcessADCData(&adcBuffer[ADC_BUFFER_SIZE / 2], ADC_BUFFER_SIZE / 2);
 }
 /**
   * @brief ´¦Àí²É¼¯µÄ ADC Êı¾İ
   * @param data: ´¦ÀíÊı¾İµÄÆğÊ¼µØÖ·
   * @param length: Êı¾İµÄ³¤¶È
   */
-void ProcessADCData(uint32_t* data, uint32_t length)
+float ProcessADCData(volatile uint16_t* data, uint32_t length)
 {
   uint32_t sum = 0;
   for (uint32_t i = 0; i < length; i++)
   {
     sum += data[i];
+//		OLED_ShowNum(0,0,data[i],4,2);
+////		HAL_Delay(100);
+//		OLED_ShowStr(0,0,"    ",1);
   }
-  uint32_t avg = sum / length;
+  float avg = sum / length;
+//	OLED_ShowStr(0,0,"     ",1);
+//	OLED_ShowStr(55,0,"            ",1);
+	OLED_ShowFloat(30,0,avg * 3.3 /4096 ,4,2,2);
   // ºóĞø´¦Àí£ºÀıÈçÍ¨¹ıUART·¢ËÍ¡¢´æÈëÈ«¾Ö±äÁ¿µÈ
+	return avg;
 }
-void DisplayHalfBuffer(uint32_t *halfBuffer, uint32_t length)//´«ÈëÈÎÒâ³¤¶ÈºÍÆğÊ¼Î»ÖÃ¾ù¿É
+
+void DisplayHalfBuffer(volatile uint16_t *halfBuffer, uint32_t length)//´«ÈëÈÎÒâ³¤¶ÈºÍÆğÊ¼Î»ÖÃ¾ù¿É
 {
-    uint32_t x, y;
-    uint32_t samplesToDisplay = (length < OLED_WIDTH) ? length : OLED_WIDTH;
+//    uint8_t x, y;
+//    uint32_t samplesToDisplay = (length < OLED_WIDTH) ? length : OLED_WIDTH;
+//		uint8_t counter = 0	;//²âÊÔÓÃ
+//    // ÈçÓĞĞèÒª£¬Ê×ÏÈÇå³ıÏÔÊ¾£¨ÀıÈç OLED_Clear()£©
+//    ClearRectangleStr();
+//		OLED_ClearBuffer();
+//	// =====================================================
+//    // ÔÚ y µÄ 8~63 Çø¼äÄÚ»æÖÆÕı·½ĞÎÍø¸ñ
+//    // =====================================================
+//    // »æÖÆË®Æ½Íø¸ñÏß
+//		for (x = 0; x<OLED_WIDTH; x++)
+//		{
+//			OLED_DrawPixel(x,35);
+//		}
+//    for (y = GRID_TOP; y <= GRID_BOTTOM; y += GRID_CELL_SIZE)
+//    {
+//        for (x = 0; x < OLED_WIDTH; x++)
+//        {
+//            if(x % 8 == 0) {OLED_DrawPixel(x, y);}
+//					
+//        }
+//    }
+//    // »æÖÆ´¹Ö±Íø¸ñÏß
+//    for (x = 0; x < OLED_WIDTH; x += GRID_CELL_SIZE)
+//    {
+//        if (x % 32 == 0){
+//					for (y = GRID_TOP; y <= GRID_BOTTOM; y++)
+//					{
+//            OLED_DrawPixel(x, y);
+//					}
+//				}
+//    }
+//    for (x = 0; x < samplesToDisplay; x++)
+//    {
+//        /* Ó³Éä ADC Êı¾İµ½ y ×ø±ê£º
+//         * scaled_y ¼ÆËãÎª ADC Êı¾İ°´±ÈÀıËõ·Åµ½ 0 ¡« (OLED_HEIGHT-1-8) ·¶Î§ÄÚ£¬
+//         * Ëæºó·´×ª y ×ø±ê£¨OLED ¶¥²¿Îª8£¬µ×²¿Îª OLED_HEIGHT-1£©
+//         */
+//        y = (halfBuffer[x] * (OLED_HEIGHT - 1 - 8)) / ADC_MAX_VALUE;
+//        y = (OLED_HEIGHT - 1) - y ;
+////				counter++;
+////				OLED_DrawPixel(counter,counter);
+//        OLED_DrawPixel(x, y);
+//    }
 
-    // ÈçÓĞĞèÒª£¬Ê×ÏÈÇå³ıÏÔÊ¾£¨ÀıÈç OLED_Clear()£©
-    // OLED_Clear();
+//    // ÈçÓĞÆÁÄ»Ë¢ĞÂº¯Êı£¬¿ÉÔÚ´Ëµ÷ÓÃ£¨ÀıÈç OLED_UpdateScreen()£©
+//		//OLED_UpdatePage();
+//		HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+			 uint8_t x, y;
+    uint32_t samplesPerPixel;
 
-    for (x = 0; x < samplesToDisplay; x++)
+    // ¸ù¾İÊäÈë³¤¶È¾ö¶¨Ã¿ÁĞ¶ÔÓ¦µÄÊı¾İµã¸öÊı
+    if (length < OLED_WIDTH)
     {
-        /* Ó³Éä ADC Êı¾İµ½ y ×ø±ê£º
-         * scaled_y ¼ÆËãÎª ADC Êı¾İ°´±ÈÀıËõ·Åµ½ 0 ¡« (OLED_HEIGHT-1) ·¶Î§ÄÚ£¬
-         * Ëæºó·´×ª y ×ø±ê£¨OLED ¶¥²¿Îª0£¬µ×²¿Îª OLED_HEIGHT-1£©
-         */
-        y = (halfBuffer[x] * (OLED_HEIGHT - 1)) / ADC_MAX_VALUE;
-        y = (OLED_HEIGHT - 1) - y;
-
-        OLED_DrawPixel(x, y);
+        samplesPerPixel = 1;
+    }
+    else
+    {
+        // µ±³¤¶ÈÎª OLED_WIDTH µÄ±¶ÊıÊ±£¬Ã¿ÁĞÏÔÊ¾ length/OLED_WIDTH ¸öÊı¾İ
+        samplesPerPixel = length / OLED_WIDTH;
     }
 
-    // ÈçÓĞÆÁÄ»Ë¢ĞÂº¯Êı£¬¿ÉÔÚ´Ëµ÷ÓÃ£¨ÀıÈç OLED_UpdateScreen()£©
-    // OLED_UpdateScreen();
+    // ÈçÓĞĞèÒª£¬Ê×ÏÈÇå³ıÏÔÊ¾ÇøÓòºÍ OLED »º³åÇø
+    ClearRectangleStr();
+    OLED_ClearBuffer();
+
+//    // =====================================================
+//    // »æÖÆÕı·½ĞÎÍø¸ñ
+//    // =====================================================
+
+//    // »æÖÆÒ»ÌõË®Æ½Íø¸ñÏß£¨ÀıÈçÔÚ y = 35 ÏñËØ´¦£©
+//    for (x = 0; x < OLED_WIDTH; x++)
+//    {
+//        OLED_DrawPixel(x, 35);
+//    }
+
+//    // »æÖÆÆäËûË®Æ½Íø¸ñÏß£¬Ã¿ GRID_CELL_SIZE ¸öÏñËØ»æÖÆ 1 Ìõ
+//    for (y = GRID_TOP; y <= GRID_BOTTOM; y += GRID_CELL_SIZE)
+//    {
+//        for (x = 0; x < OLED_WIDTH; x++)
+//        {
+//            if (x % 8 == 0)
+//            {
+//                OLED_DrawPixel(x, y);
+//            }
+//        }
+//    }
+
+//    // »æÖÆ´¹Ö±Íø¸ñÏß£¬Ã¿ GRID_CELL_SIZE ¸öÏñËØ»æÖÆ
+//    for (x = 0; x < OLED_WIDTH; x += GRID_CELL_SIZE)
+//    {
+//        // ´Ë´¦ÀıÈçÖ»¶Ô x Îª 32 µÄ±¶ÊıµÄÁĞ»æÖÆÍêÕûµÄ´¹Ö±Ïß
+//        if (x % 32 == 0)
+//        {
+//            for (y = GRID_TOP; y <= GRID_BOTTOM; y++)
+//            {
+//                OLED_DrawPixel(x, y);
+//            }
+//        }
+//    }
+
+//    // =====================================================
+//    // ÏÔÊ¾Êı¾İ£º¸ù¾İÊäÈëµÄ ADC Êı¾İ¼ÆËãÆ½¾ùÖµºóÓ³Éäµ½ y ×ø±ê
+//    // =====================================================
+//    for (x = 0; x < OLED_WIDTH; x++)
+//    {
+//        uint32_t sum = 0;
+//        uint32_t startIndex = x * samplesPerPixel;
+//        // ÀÛ¼Ó¸ÃÁĞ¶ÔÓ¦µÄÒ»×éÊı¾İ
+//        for (uint32_t i = 0; i < samplesPerPixel; i++)
+//        {
+//            sum += halfBuffer[startIndex + i];
+//        }
+//        // ¼ÆËãÆ½¾ùÖµ
+//        uint16_t avgSample = sum / samplesPerPixel;
+
+//        /* Ó³Éä ADC Êı¾İµ½ y ×ø±ê£º
+//         * 1. ½« avgSample °´±ÈÀıËõ·Åµ½ [0, OLED_HEIGHT-1-8] ·¶Î§ÄÚ£¨Ô¤Áô¶¥²¿ 8 ĞĞ£©£¬
+//         * 2. È»ºó·­×ª y ×ø±ê£¨OLED ¶¥²¿Îª 8 ÏñËØ£¬µ×²¿Îª OLED_HEIGHT-1£©¡£
+//         */
+//        y = (avgSample * (OLED_HEIGHT - 1 - 8)) / ADC_MAX_VALUE;
+//        y = (OLED_HEIGHT - 1) - y;
+
+//        // »æÖÆ¶ÔÓ¦µÄÏñËØ
+//        OLED_DrawPixel(x, y);
+//    }
+
+    // =====================================================
+    // ³éÑùÏÔÊ¾Êı¾İ
+    // =====================================================
+    for (x = 0; x < OLED_WIDTH; x++)
+    {
+        // ¼ÆËã±¾ÁĞÑù±¾ÔÚ»º³åÇøÖĞµÄË÷Òı
+        uint32_t index = x * samplesPerPixel;
+        if (index >= length)
+        {
+            index = length - 1;
+        }
+
+        // ½« ADC Êı¾İÓ³Éäµ½ y ×ø±ê£º
+        // 1. Ê×ÏÈ½« ADC Êı¾İ°´±ÈÀıËõ·Åµ½ 0 ~ (OLED_HEIGHT - 1 - 8) ·¶Î§ÄÚ£¨Ô¤Áô¶¥²¿ 8 ĞĞ£©
+        // 2. È»ºó y ×ø±ê·­×ª£ºOLED ¶¥²¿Îª 8 ÏñËØ£¬µ×²¿Îª OLED_HEIGHT-1
+        y = (halfBuffer[index] * (OLED_HEIGHT - 1 - 8)) / ADC_MAX_VALUE;
+        y = (OLED_HEIGHT - 1) - y;
+        
+        // »æÖÆ¸Ã²ÉÑù¶ÔÓ¦µÄµã
+        OLED_DrawPixel(x, y);
+    }
+		// ÈçÓĞÆÁÄ»Ë¢ĞÂº¯Êı£¬¿ÉÔÚ´Ëµ÷ÓÃ£¨ÀıÈç OLED_UpdateScreen() »ò OLED_UpdatePage()£©
+    // ÀıÈç£ºOLED_UpdatePage();
+
+    // ÒÔÏÂÎª²âÊÔÓÃ£ºÇĞ»»Ö¸Ê¾µÆ×´Ì¬
+    //HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);  // ²ÎÊı¸ù¾İÊµ¼ÊÇé¿öÌîĞ´
 }
+void Write_DAC(uint8_t value) {
+    // ¼Ù¶¨Ê¹ÓÃ GPIOB µÄµÍ8Î»£¨¼´ PB0 ~ PB7£©ÕâÒ»²¿·ÖĞèÒªÖØĞ´
+    // ÏÈÇå³ıµÍ8Î»£¬ÔÙĞ´Èë value
+    //GPIOB->ODR = (GPIOB->ODR & 0xFF00) | value;
+	// Êä³öÎ» 0 µ½ GPIOA, PA1
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, (value & (1 << 0)) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+    // Êä³öÎ» 1 µ½ GPIOA, PA2
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, (value & (1 << 1)) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+    // Êä³öÎ» 2 µ½ GPIOA, PA3
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, (value & (1 << 2)) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+    // Êä³öÎ» 3 µ½ GPIOA, PA4
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, (value & (1 << 3)) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+    // Êä³öÎ» 4 µ½ GPIOA, PA5
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, (value & (1 << 4)) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+    // Êä³öÎ» 5 µ½ GPIOA, PA6
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, (value & (1 << 5)) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+    // Êä³öÎ» 6 µ½ GPIOA, PA7
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, (value & (1 << 6)) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+    // Êä³öÎ» 7 µ½ GPIOB, PB0
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, (value & (1 << 7)) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
+	uint8_t x,y;//»æÍ¼²ÎÊı
+	float mean = 0;
+	uint8_t crossing_count = 0;
+	int first_crossing = -1;
+  int last_crossing = -1;
+	float samples_per_period = 0;
+	float period = 0;
+	float frequency = 0;
   if(htim->Instance == TIM2)
-  {
-    HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+  {	
+		uint16_t tableIndex = (uint16_t)(phase * SINE_TABLE_SIZE / (2.0 * M_PI));
+        if (tableIndex >= SINE_TABLE_SIZE)
+        {
+            tableIndex = 0;
+        }
+        // Ö±½Ó´Ó±íÖĞ»ñÈ¡¶ÔÓ¦µÄ DAC Êä³öÖµ
+        uint16_t dacValue = table[tableIndex];
+				Write_DAC(dacValue);
+    //HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+		//OLED_CLS();
+		//uint32_t temp = HAL_ADC_GetValue(&hadc1);
+		//OLED_ShowNum(20,3,temp,4,2);
+		/* ¿ªÊ¼ ADC ×ª»» */
+    HAL_ADC_Start(&hadc1);
+    
+    /* ÂÖÑ¯µÈ´ı×ª»»Íê³É£¬³¬Ê±Ê±¼ä½¨Òé¸ù¾İÊµ¼ÊÇé¿öÊÊµ±µ÷Õû */
+    if(HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
+    {
+      adcValue = HAL_ADC_GetValue(&hadc1);
+      /* ÔÚÕâÀï¿ÉÒÔ´¦Àí¡¢±£´æ»ò·¢ËÍ ADC ×ª»»µÃµ½µÄ adcValue */
+      /* ÀıÈç£º½« adcValue ´æÈëÈ«¾Ö»º³åÇø£¬Í¨¹ı UART Êä³öµÈ */
+			adcBuffer[counter] = adcValue;
+    }
+		if(counter>127) {//»º³åÇøÂú
+			ClearRectangleStr();
+			OLED_ClearBuffer();
+			for (x = 0; x<OLED_WIDTH; x++)
+		{
+			OLED_DrawPixel(x,35);
+		}
+    for (y = GRID_TOP; y <= GRID_BOTTOM; y += GRID_CELL_SIZE)
+    {
+        for (x = 0; x < OLED_WIDTH; x++)
+        {
+            if(x % 8 == 0) {OLED_DrawPixel(x, y);}
+					
+        }
+    }
+    // »æÖÆ´¹Ö±Íø¸ñÏß
+    for (x = 0; x < OLED_WIDTH; x += GRID_CELL_SIZE)
+    {
+        if (x % 32 == 0){
+					for (y = GRID_TOP; y <= GRID_BOTTOM; y++)
+					{
+            OLED_DrawPixel(x, y);
+					}
+				}
+    }
+			mean = ProcessADCData(&adcBuffer[0],ADC_BUFFER_SIZE);
+			for (size_t i = 1; i < ADC_BUFFER_SIZE; i++)
+			{
+        if ((adcBuffer[i - 1] < mean) && (adcBuffer[i] >= mean))
+        {
+            if (first_crossing < 0)
+            {
+              first_crossing = (int)i;
+							crossing_count++;
+            }
+            last_crossing = (int)i;
+						crossing_count++;
+        }
+			}
+			samples_per_period = (last_crossing - first_crossing)/crossing_count;
+			period = samples_per_period / SAMPLE_RATE;
+			frequency = 1.0 / period;
+			OLED_ShowFloat(0,0,frequency,4,2,2);
+			counter=0;//ÖØÖÃ»º³åÇø¶¥Ö¸Õë£¬²»Çå¿Õ»º³åÇø
+		}
+    // ¼ÆËãÖÜÆÚ£¨Ãë£©ºÍÆµÂÊ£¨Hz£©
+		OLED_DrawPixel(counter, OLED_HEIGHT- 1 - ((adcValue * (OLED_HEIGHT - 1 - 8)) / ADC_MAX_VALUE));
+		counter++;
+    phase += 2.0 * M_PI * sineFrequency * timeStep;
+        if (phase >= 2.0 * M_PI)
+        {
+            phase -= 2.0 * M_PI;
+        }
   }
+	else if (htim->Instance == TIM3) {
+//        //Çå³ıÖĞ¶Ï±êÖ¾Î»
+//        
+//				//HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+//        // ¼ÆËãµ±Ç°ÕıÏÒÖµ
+//        double sineValue = sin(phase);  // ·¶Î§Îª -1 µ½ +1
+//        // Ó³Éäµ½ 0¡«255
+//        uint8_t dacValue = (uint8_t)(((sineValue + 1.0) / 2.0) * 255.0);
+
+//        // Êä³öµ½ DAC£¨GPIO£©
+//        Write_DAC(dacValue);
+
+//        // ¸üĞÂÏàÎ»£ºÃ¿¸ö²ÉÑùµãÏàÎ»ÔöÁ¿ = 2¦Ğ * sineFrequency * timeStep
+//        phase += 2.0 * M_PI * sineFrequency * timeStep;
+//        if (phase >= 2.0 * M_PI) {
+//            phase -= 2.0 * M_PI;
+//        }
+//			}
+					// ¸ù¾İµ±Ç° phase ¼ÆËã²éÕÒ±íµÄË÷Òı
+        // phase·¶Î§£º[0,2¦Ğ), ¶ÔÓ¦²éÕÒ±íË÷Òı£º[0, SINE_TABLE_SIZE-1]
+        uint16_t tableIndex = (uint16_t)(phase * SINE_TABLE_SIZE / (2.0 * M_PI));
+
+        // ±£ÏÕ¼ì²é£ºÈ·±£Ë÷ÒıÔÚºÏÀí·¶Î§ÄÚ
+        if (tableIndex >= SINE_TABLE_SIZE)
+        {
+            tableIndex = 0;
+        }
+
+        // ´Ó²éÕÒ±íÖĞ¶ÁÈ¡Ô¤¼ÆËãµÄÕıÏÒÖµ£¨ÒÑÓ³ÉäÖÁ 0-255£©
+        uint8_t dacValue = table[tableIndex];
+
+        // Êä³öµ½ DAC
+        Write_DAC(dacValue);
+
+        // ¸üĞÂÏàÎ»£ºÃ¿¸ö²ÉÑùÖÜÆÚÄÚÔö¼ÓµÄÏàÎ»ÔöÁ¿Îª 2¦Ğ * sineFrequency * timeStep
+        phase += 2.0 * M_PI * sineFrequency * timeStep;
+        if (phase >= 2.0 * M_PI)
+        {
+            phase -= 2.0 * M_PI;
+        }
+			}
 }
+/**
+ * @brief »æÖÆÕıÏÒ²¨ĞÎµÄ²âÊÔº¯Êı
+ *
+ * ¸Ãº¯ÊıÔÚ OLED ÏÔÊ¾ÆÁÉÏ»æÖÆÒ»¸öÍêÕûÖÜÆÚµÄÕıÏÒ²¨ĞÎ£º
+ * - Õñ·ùÈ¡ OLED_HEIGHT/4
+ * - ²¨ĞÎÖĞĞÄÏßÎ»ÓÚÆÁÄ»ÖĞ¼ä
+ * - Ë®Æ½·½ÏòÉÏÕıÏÒ²¨ÔË¶¯Ò»¸öÍêÕûÖÜÆÚ
+ */
+void DrawSineWave(void)
+{
+    int x, y;
+    double amplitude = (double)OLED_HEIGHT / 2.0;  // Õñ·ù
+    double center = (double)OLED_HEIGHT / 2.0;       // ÖĞĞÄÏß
+
+    for (x = 0; x < OLED_WIDTH; x++)
+    {
+        // angle ¼ÆËã£ºÊ¹µÃ x ±éÀúÊ±ÕıÏÒ²¨ÔË¶¯Ò»¸öÍêÕûÖÜÆÚ
+        double angle = ((double)x / OLED_WIDTH) * 8 * M_PI;
+        // ¸ù¾İÕıÏÒ¹«Ê½¼ÆËã y ×ø±ê£¬²¢¼ÓÉÏÖĞĞÄÆ«ÒÆ
+        y = (int)(center + amplitude * sin(angle));
+        // »æÖÆÏñËØ
+        OLED_DrawPixel(x, y);
+				//HAL_Delay(100);
+    }
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -166,7 +498,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-	htim2.Init.Period = TIM_PERIOD;
+	//htim2.Init.Period = TIM_PERIOD;
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -177,36 +509,118 @@ int main(void)
   MX_I2C2_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+	
+	for (int i = 0; i < SINE_TABLE_SIZE; i++) {
+        // ¼ÆËãµ±Ç°½Ç¶È£º½« 0¡«2¦Ğ ¾ù·Ö 64 ¸öµã
+        double angle = 2.0 * M_PI * i / SINE_TABLE_SIZE;
+        // ¼ÆËãÕıÏÒÖµ£¬·¶Î§£º-1 ~ 1
+        double sineValue = sin(angle);
+        // Ó³Éäµ½ 0¡«255£¬Çë×¢Òâ¶Ô¸¡µãÖµ½øĞĞËÄÉáÎåÈë´¦Àí
+        double mappedValue = (sineValue + 1.0) / 2.0 * 255.0;
+        table[i] = (uint8_t)(mappedValue + 0.5);
+    }
+	htim2.Init.Period = TIM_PERIOD;
+	HAL_TIM_Base_Init(&htim2);//ÅäÖÃTIM2²ÎÊı 
+	uint32_t period = (100000000 / UPDATE_RATE) - 1;
+  htim3.Init.Period = period;
+	sineFrequency = 100;
+	HAL_TIM_Base_Init(&htim3);//ÅäÖÃTIM3ÖÜÆÚ
 	if (HAL_TIM_Base_Start(&htim2) != HAL_OK)
   {
     Error_Handler();
   }//Æô¶¯TIM2
-	HAL_TIM_Base_Start_IT(&htim2);
-	/* Æô¶¯ ADC µÄ DMA Ä£Ê½£¬ÔÚÑ­»·Ä£Ê½ÏÂ×Ô¶¯½«×ª»»½á¹û´«ËÍµ½ adcBuffer */
-  if (HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adcBuffer, ADC_BUFFER_SIZE) != HAL_OK)
+	if (HAL_TIM_Base_Start(&htim3) != HAL_OK)
   {
     Error_Handler();
-  }
-	//ÔİÊ±¿¼ÂÇÊ¹ÓÃu8g2¿âÍê³É»æÍ¼ 1/28:u8g2ÓĞ²¿·Ö´æÔÚÎÊÌâ£¬ÔİÊ±ÆúÓÃ 2/8:ÒÆ³ıu8g2
+  }//Æô¶¯TIM3
+	
+//	//ÔİÊ±¿¼ÂÇÊ¹ÓÃu8g2¿âÍê³É»æÍ¼ 1/28:u8g2ÓĞ²¿·Ö´æÔÚÎÊÌâ£¬ÔİÊ±ÆúÓÃ 2/8:ÒÆ³ıu8g2
 	OLED_Init();
 	OLED_ON();
 	OLED_CLS();
+	OLED_Fill('a');
+	HAL_Delay(1000);
+	OLED_CLS();
+	OLED_ShowNum(8,0,1234,4,2);
 	OLED_ShowStr(20,3,"hello world",1);//ÕâÒ»²¿·Ö´úÂëÃ»ÓĞÎÊÌâ£¬ÁíÍâ£º²»ÒªÔÚ×¢ÊÍÀï´ò//
+	OLED_ShowFloat(8,7,12.34,2,2,2);
 	//OLED_DrawPixel(0,0);
-//	for(int i =0;i<128;i++)
-//	{
-//		OLED_DrawPixel(i,i/2);
-//		OLED_DrawPixel(i,63-i/2);
-//	}
+	for(int i =0;i<128;i++)
+	{
+		OLED_DrawPixel(i,i/2);
+		OLED_DrawPixel(i,63-i/2);
+		OLED_DrawPixel(i,31);
+		OLED_DrawPixel(63,i/2);
+	}
 	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
+	HAL_Delay(1000);
+	OLED_CLS();
+	DrawSineWave();
+	HAL_Delay(1000);
+	OLED_CLS();//×Ô¼ì
+//	for(int i = 0;i<128;i++)
+//	{
+//		for(int j = 0;j<64;j++)
+//		{
+//			OLED_DrawPixel(i,j);
+//		}
+//	}
+//	HAL_Delay(1000);
+//	ClearRectangleStr();
+//	HAL_Delay(1000);
+//	OLED_CLS();
+	HAL_TIM_Base_Start_IT(&htim2);
+	__HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
+//	
+//	HAL_TIM_Base_Start_IT(&htim3);
+//	__HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
+	HAL_Delay(0); 
+	/* Æô¶¯ ADC µÄ DMA Ä£Ê½£¬ÔÚÑ­»·Ä£Ê½ÏÂ×Ô¶¯½«×ª»»½á¹û´«ËÍµ½ adcBuffer */
+//	if (HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adcBuffer, ADC_BUFFER_SIZE) != HAL_OK)
+//	{
+//		Error_Handler();
+//	}
+
+	
+	//HAL_Delay(1000);
+//	for (int i = 0; i<256 ;i++)
+//	{
+//		Write_DAC(i);
+//		HAL_Delay(1);
+//	}
+		int temp = 0;
+		int value = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-//		HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+//		temp++;
+		HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+//		Write_DAC(table[temp]);
+//		HAL_ADC_Start(&hadc1);
+		HAL_Delay(50);
+//		value = HAL_ADC_GetValue(&hadc1);
+//			OLED_DrawPixel(temp, OLED_HEIGHT- 1 - ((value * (OLED_HEIGHT - 1 - 8)) / ADC_MAX_VALUE));
+//		if (temp>SINE_TABLE_SIZE) temp = 0;
+	 	
+//		uint32_t temp = HAL_ADC_GetValue(&hadc1);
+//		OLED_ShowNum(20,3,temp,4,2);
 //		HAL_Delay(250);
+//		OLED_CLS();
+//		double sineValue = sin(phase);  // ·¶Î§Îª -1 µ½ +1
+//    // Ó³Éäµ½ 0¡«255
+//    uint8_t dacValue = (uint8_t)(((sineValue + 1.65) / 3.3) * 255.0);
+
+//    // Êä³öµ½ DAC£¨GPIO£©
+//    Write_DAC(dacValue);
+
+//    // ¸üĞÂÏàÎ»£ºÃ¿¸ö²ÉÑùµãÏàÎ»ÔöÁ¿ = 2¦Ğ * sineFrequency * timeStep
+//    phase += 2.0 * M_PI * sineFrequency * timeStep;
+//        if (phase >= 2.0 * M_PI) {
+//            phase -= 2.0 * M_PI;
+//        }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -274,7 +688,7 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
-		HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_SET);
   }
   /* USER CODE END Error_Handler_Debug */
 }

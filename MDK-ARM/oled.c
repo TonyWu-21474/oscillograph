@@ -2,6 +2,8 @@
 #include "asc.h"    //字库（可以自己制作）
 #include "main.h"
 #include "i2c.h" 
+#define OLED_HEIGHT 128
+#define OLED_WIDTH 64
 void WriteCmd(unsigned char I2C_Command) //写命令利用I2C通讯
  {
 	HAL_I2C_Mem_Write(&hi2c2,OLED0561_ADD,COM,I2C_MEMADD_SIZE_8BIT,&I2C_Command,1,100);
@@ -137,26 +139,208 @@ void OLED_ShowStr(unsigned char x, unsigned char y, unsigned char ch[], unsigned
 static uint8_t oled_buffer[8][128] = {0};
 
 // 新增函数：更新显存到OLED（类似OLED_ShowStr的即时写入逻辑）
-void OLED_UpdatePage(uint8_t page, uint8_t start_col) {
-    OLED_SetPos(start_col, page);
-    for (uint8_t col = start_col; col < 128; col++) {
-        WriteDat(oled_buffer[page][col]);
+void OLED_UpdatePage() {
+     uint8_t page, x;
+
+    for (page = 0; page < 8; page++)
+    {
+        for (x = 0; x < OLED_WIDTH; x++)
+        {
+            // 设置页地址：SSD1306 使用 0xB0 ~ 0xB7 表示页 0 ~ 7
+            WriteCmd(0xB0 + page);
+
+            // 设置列地址低位：(0x00 + (x & 0x0F))
+            WriteCmd(0x00 + (x & 0x0F));
+
+            // 设置列地址高位：(0x10 + ((x >> 4) & 0x0F))
+            WriteCmd(0x10 + ((x >> 4) & 0x0F));
+
+            // 将对应的缓冲区数据写入 OLED
+            WriteDat(oled_buffer[page][x]);
+        }
     }
 }
-
+//显示数字
+void OLED_ShowNum(u8 x,u8 y,u32 num,u8 len,u8 size2)//size参数固定为2
+{         	
+	u8 t,temp;
+	u8 enshow=0;						   
+	for(t=0;t<len;t++)
+	{
+		temp=(num/oled_pow(10,len-t-1))%10;
+		if(enshow==0&&t<(len-1))
+		{
+			if(temp==0)
+			{
+				OLED_ShowChar(x+(size2)*3*t,y,' ',size2);
+				continue;
+			}else enshow=1; 
+		}
+	 	OLED_ShowChar(x+(size2)*3*t,y,temp+'0',size2); 
+	}
+} 
+void OLED_ShowNum1(uint8_t x, uint8_t y, uint32_t Number, uint8_t Length)
+{
+    uint8_t i;
+    for (i = 0; i < Length; i++)
+    {
+        OLED_ShowChar(x, y, Number / oled_pow(10, Length - i - 1) % 10 + '0',1);
+    }
+}
+void OLED_ShowChar(u8 x,u8 y,u8 chr,u8 Char_Size)
+{      	
+	unsigned char c=0,i=0;	
+		c=chr-' ';//???????			
+		if(x>128-1){x=0;y=y+2;}
+		if(Char_Size ==16)
+			{
+			OLED_SetPos(x,y);	
+			for(i=0;i<8;i++)
+			WriteDat(F8X16[c*16+i]);
+			OLED_SetPos(x,y+1);
+			for(i=0;i<8;i++)
+			WriteDat(F8X16[c*16+i+8]);
+			}
+			else {	
+				OLED_SetPos(x,y);
+				for(i=0;i<6;i++)
+				WriteDat(F6x8[c][i]);
+				
+			}
+}
+u32 oled_pow(u8 m,u8 n)
+{
+	u32 result=1;	 
+	while(n--)result*=m;    
+	return result;
+}	
 // 修改后的画点函数
 void OLED_DrawPixel(uint8_t x, uint8_t y) {
-    // 坐标校验（注意y范围是像素坐标0~63）
-    if (x >= 128 || y >= 64) return;
+//    // 坐标校验（注意y范围是像素坐标0~63）
+//    if (x >= 128 || y >= 64) return;
 
-    // 计算页和位
-    uint8_t page = y / 8;          // 页号0~7（与OLED_ShowStr的y参数对齐）
-    uint8_t bit_pos = y % 8;       // 页内位0~7
+//    // 计算页和位
+//    uint8_t page = y / 8;          // 页号0~7（与OLED_ShowStr的y参数对齐）
+//    uint8_t bit_pos = y % 8;       // 页内位0~7
 
-    // 修改缓冲区
+//    // 修改缓冲区
+//    oled_buffer[page][x] |= (1 << bit_pos);
+
+//    // 通过OLED_SetPos设置位置并更新单个字节（即时刷新）
+//    OLED_SetPos(x, page);          // 复用OLED_ShowStr的位置设置逻辑
+//    WriteDat(oled_buffer[page][x]);
+	 // 坐标检查（确保在 OLED 有效范围内）
+    if (x >= 128 || y >= 64)
+    {
+        return;
+    }
+
+    // 计算页号和页内位位置（SSD1306 每页存储8行像素）
+    uint8_t page = y / 8;
+    uint8_t bit_pos = y % 8;
+
+    // 在缓冲区的对应位置设置相应位
     oled_buffer[page][x] |= (1 << bit_pos);
 
-    // 通过OLED_SetPos设置位置并更新单个字节（即时刷新）
-    OLED_SetPos(x, page);          // 复用OLED_ShowStr的位置设置逻辑
+    // 设置 SSD1306 地址：
+    // 1. 选择页：0xB0 + page
+    WriteCmd(0xB0 + page);
+    // 2. 设定列地址低位：0x00 + (x & 0x0F)
+    WriteCmd(0x00 + (x & 0x0F));
+    // 3. 设定列地址高位：0x10 + ((x >> 4) & 0x0F)
+    WriteCmd(0x10 + ((x >> 4) & 0x0F));
+    // 更新该字节的数据到 OLED
     WriteDat(oled_buffer[page][x]);
+}
+void OLED_ClearBuffer(void)
+{
+    // 方法1：使用嵌套循环
+    for (uint8_t page = 0; page < 8; page++)
+    {
+        for (uint8_t col = 0; col < 128; col++)
+        {
+            oled_buffer[page][col] = 0;
+        }
+    }
+
+    // 方法2：如果 oled_buffer 在内存中是连续存储的，
+    // 可以直接使用 memset 将整个区域清零
+    // memset(oled_buffer, 0, sizeof(oled_buffer));
+}
+void ClearRectFrom(uint8_t x, uint8_t y)
+{
+    // 检查输入坐标是否有效
+    if (x >= OLED_WIDTH || y >= OLED_HEIGHT) {
+        return;
+    }
+    
+    // 计算受影响的页面范围
+    uint8_t firstPage = y / 8;          // 起始页面
+    uint8_t lastPage  = (OLED_HEIGHT - 1) / 8;   // 最后一页（63/8 = 7）
+
+    // 对每一页进行遍历，从首个受影响页面到最后页面
+    for (uint8_t page = firstPage; page <= lastPage; page++)
+    {
+        uint8_t mask;
+        if (page == firstPage) {
+            // 首个页面中，清除的起始像素为 y % 8（即该页面内从此比特位开始）
+            // 例如 y=10 时，10%8==2，则清除此页中第2位到第7位（0xFF << 2 => 0xFC）
+            mask = 0xFF << (y % 8);
+        } else {
+            // 对于后续页面，整个页面都在清除范围内
+            mask = 0xFF;
+        }
+        // 以列为单位，遍历从给定x到右侧边界
+        for (uint8_t col = x; col < OLED_WIDTH; col++)
+        {
+            /* 
+             * 对应位置的字节中，利用 bitwise AND 清零那些位：
+             * 原因：oled_buffer[page][col]中每个比特对应一个像素，将其与 ~mask 相与，
+             * 那些 mask 中为 1 的位就会被清0，而其他位保持不变。
+             */
+            oled_buffer[page][col] &= ~mask;
+						
+        }
+    }
+		OLED_UpdatePage();
+}
+void ClearRectangleStr()//TextSize请默认为1，直接除了第一行清空
+{
+    for (int y = 1; y < 8; y++)
+		{
+			OLED_ShowStr(0,y,"                      ",1);
+		}   
+}
+void OLED_ShowFloat(u8 x, u8 y, float num_f, u8 int_len, u8 dec_len, u8 size2)
+{
+	 uint32_t scale = oled_pow(10, dec_len);
+    uint32_t scaled = (uint32_t)(num_f * scale + 0.5f);  // 四舍五入到指定小数位
+    uint32_t int_part = scaled / scale;
+    uint32_t dec_part = scaled % scale;
+
+    // 显示整数部分（继承前导零处理逻辑）
+    OLED_ShowNum(x, y, int_part, int_len, size2);
+
+    // 若小数位数为 0，不显示小数点和小数部分
+    if (dec_len == 0) return;
+		// 计算整数部分占用的像素宽度
+    u8 int_width = int_len * (size2 * 3);
+
+    // 显示小数点
+    OLED_ShowChar(x + int_width, y, '.', size2);
+
+    // 显示小数部分（固定显示 dec_len 位，自动补零）
+    for (u8 t = 0; t < dec_len; t++) {
+        u8 temp = (dec_part / oled_pow(10, dec_len - t - 1)) % 10;
+        OLED_ShowChar(x + int_width + (size2 * 3) * (t + 1), y, temp + '0', size2);
+    }
+}
+//修改缓冲区实现画点
+void setPixel(uint8_t x, uint8_t y) //弃用
+{
+//    if (x >= OLED_WIDTH || y >= OLED_HEIGHT)
+//        return;
+//    uint8_t page = y / 8;          // 每页 8 行像素
+//    uint8_t bit_position = y % 8;
+//    oled_buffer[page][x] |= (1 << bit_position);
 }
