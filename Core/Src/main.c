@@ -43,17 +43,17 @@ volatile double phase = 0.0;
 volatile int counter = 0;
 volatile double sineFrequency = 1000.0;  // 正弦波频率，初始为 1 kHz
 const double timeStep = 1.0 / UPDATE_RATE;  // 每个采样点的时间间隔（秒）
-#define ADC_BUFFER_SIZE 128
+#define ADC_BUFFER_SIZE 256
 #define SINE_TABLE_SIZE 128
 volatile uint16_t adcBuffer[ADC_BUFFER_SIZE]; // DMA数据缓冲区,每半缓冲区绘制一次图
 volatile uint8_t table[SINE_TABLE_SIZE]={0};//正弦表
 volatile uint16_t adcValue = 0;
 #define SAMPLE_RATE 1000    // 如需 1000Hz，请改为 1000
 
-#if SAMPLE_RATE == 500
-  #define TIM_PERIOD (2000 - 1)  // 2us 周期（假设定时器时钟为 1MHz）现在配置为100MHz
+#if SAMPLE_RATE == 500		//别太高
+  #define TIM_PERIOD (2000 - 1)  // 2ms 周期（假设定时器时钟为 1MHz）现在配置为10MHz
 #elif SAMPLE_RATE == 1000
-  #define TIM_PERIOD (1000 - 1)  // 1us 周期
+  #define TIM_PERIOD (1000 - 1)  // 1ms 周期
 #else
   #error "采样率仅支持 500 或 1000Hz"
 #endif
@@ -94,7 +94,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 {
   /* 处理缓冲区前半部分的数据 */
 	DisplayHalfBuffer(&adcBuffer[0],ADC_BUFFER_SIZE / 2);
-  ProcessADCData(&adcBuffer[0], ADC_BUFFER_SIZE / 2);
+//  ProcessADCData(&adcBuffer[0], ADC_BUFFER_SIZE / 2);
 }
 
 /**
@@ -105,7 +105,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
   /* 处理缓冲区后半部分的数据 */
 	DisplayHalfBuffer(&adcBuffer[ADC_BUFFER_SIZE / 2],ADC_BUFFER_SIZE / 2);
-  ProcessADCData(&adcBuffer[ADC_BUFFER_SIZE / 2], ADC_BUFFER_SIZE / 2);
+//  ProcessADCData(&adcBuffer[ADC_BUFFER_SIZE / 2], ADC_BUFFER_SIZE / 2);
 }
 /**
   * @brief 处理采集的 ADC 数据
@@ -569,17 +569,17 @@ int main(void)
 //	ClearRectangleStr();
 //	HAL_Delay(1000);
 //	OLED_CLS();
-	HAL_TIM_Base_Start_IT(&htim2);
-	__HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
+//	HAL_TIM_Base_Start_IT(&htim2);
+//	__HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
 //	
-//	HAL_TIM_Base_Start_IT(&htim3);
-//	__HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
+	HAL_TIM_Base_Start_IT(&htim3);
+	__HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
 	HAL_Delay(0); 
 	/* 启动 ADC 的 DMA 模式，在循环模式下自动将转换结果传送到 adcBuffer */
-//	if (HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adcBuffer, ADC_BUFFER_SIZE) != HAL_OK)
-//	{
-//		Error_Handler();
-//	}
+	if (HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adcBuffer, ADC_BUFFER_SIZE) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
 	
 	//HAL_Delay(1000);
