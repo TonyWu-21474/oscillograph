@@ -4,6 +4,7 @@
 #include "i2c.h" 
 #define OLED_HEIGHT 128
 #define OLED_WIDTH 64
+uint8_t Bef[3],Cur[3];
 void WriteCmd(unsigned char I2C_Command) //写命令利用I2C通讯
  {
 	HAL_I2C_Mem_Write(&hi2c2,OLED0561_ADD,COM,I2C_MEMADD_SIZE_8BIT,&I2C_Command,1,100);
@@ -343,4 +344,90 @@ void setPixel(uint8_t x, uint8_t y) //弃用
 //    uint8_t page = y / 8;          // 每页 8 行像素
 //    uint8_t bit_position = y % 8;
 //    oled_buffer[page][x] |= (1 << bit_position);
+}
+void Before_State_Update(uint8_t y)//根据y的值，求出前一个数据的有关参数
+{
+	Bef[0]=7-y/8;
+	Bef[1]=7-y%8;
+	Bef[2]=1<<Bef[1];
+}
+void Current_State_Update(uint8_t y)//根据Y值，求出当前数据的有关参数
+{
+	Cur[0]=7-y/8;//数据写在第几页
+	Cur[1]=7-y%8;//0x01要移动的位数
+	Cur[2]=1<<Cur[1];//要写什么数据
+}
+ 
+ 
+void OLED_SetPos2(unsigned char x, unsigned char y) //设置起始点坐标
+{ 
+	WriteCmd(0xb0+x);
+	WriteCmd((y&0x0f)|0x00);//LOW
+	WriteCmd(((y&0xf0)>>4)|0x10);//HIGHT
+}
+ 
+void OLED_DrawWave(uint8_t x,uint8_t y)
+{
+ 
+	int8_t page_sub;
+	uint8_t page_buff,i,j;
+	Current_State_Update(y);//根据Y值，求出当前数据的有关参数
+	page_sub=Bef[0]-Cur[0];//当前值与前一个值的页数相比较
+	//确定当前列，每一页应该写什么数据
+	if(page_sub>0)
+	{
+		page_buff=Bef[0];
+		OLED_SetPos2(page_buff,x);
+		WriteDat(Bef[2]-0x01);
+		page_buff--;
+		for(i=0;i<page_sub-1;i++)
+		{
+			OLED_SetPos2(page_buff,x);
+			WriteDat(0xff);
+			page_buff--;
+		}
+		OLED_SetPos2(page_buff,x);
+		WriteDat(0xff<<Cur[1]);
+	}
+	else if(page_sub==0)
+	{
+		if(Cur[1]==Bef[1])
+		{
+			OLED_SetPos2(Cur[0],x);
+			WriteDat(Cur[2]);
+		}
+		else if(Cur[1]>Bef[1])
+		{
+			OLED_SetPos2(Cur[0],x);
+			WriteDat((Cur[2]-Bef[2])|Cur[2]);
+		}
+		else if(Cur[1]<Bef[1])
+		{
+			OLED_SetPos2(Cur[0],x);
+			WriteDat(Bef[2]-Cur[2]);
+		}
+	}
+	else if(page_sub<0)
+	{
+		page_buff=Cur[0];
+		OLED_SetPos2(page_buff,x);
+		WriteDat((Cur[2]<<1)-0x01);
+		page_buff--;
+		for(i=0;i<0-page_sub-1;i++)
+		{
+			OLED_SetPos2(page_buff,x);
+			WriteDat(0xff);
+			page_buff--;
+		}
+		OLED_SetPos2(page_buff,x);
+		WriteDat(0xff<<(Bef[1]+1));
+	}
+	Before_State_Update(y);
+	//把下一列，每一页的数据清除掉
+	for(i=0;i<8;i++)
+	{
+		OLED_SetPos2(i, x+1) ;
+		for(j=0;j<1;j++)
+			WriteDat(0x00);
+	}
 }

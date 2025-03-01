@@ -43,4 +43,5 @@ void OLED_UpdatePage();
 void ClearRectangleStr();
 void OLED_ShowFloat(u8 x, u8 y, float num_f, u8 int_len, u8 dec_len, u8 size2) ;
 void setPixel(uint8_t x, uint8_t y);
+void OLED_DrawWave(uint8_t x,uint8_t y);
 #endif
