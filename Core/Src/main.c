@@ -28,6 +28,7 @@
 /* USER CODE BEGIN Includes */
 #include "oled.h"
 #include "math.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -84,6 +85,7 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 float ProcessADCData(volatile uint16_t* data, uint32_t length);
 void DisplayHalfBuffer(volatile uint16_t *halfBuffer, uint32_t length);
+float CalculateFrequency(volatile uint16_t *adcBuffer, size_t buf_size, float mean);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -123,88 +125,118 @@ float ProcessADCData(volatile uint16_t* data, uint32_t length)
   float avg = sum / length;
 //	OLED_ShowStr(0,0,"     ",1);
 //	OLED_ShowStr(55,0,"            ",1);
-	OLED_ShowFloat(30,0,avg * 3.3 /4096 ,4,2,2);
+	//
   // 后续处理：例如通过UART发送、存入全局变量等
 	return avg;
 }
 
 void DisplayHalfBuffer(volatile uint16_t *halfBuffer, uint32_t length)//传入任意长度和起始位置均可
 {
-		uint8_t x, y;
-    uint32_t samplesPerPixel;
+//		uint8_t x, y;
+//    uint32_t samplesPerPixel;
 
-    // 根据输入长度决定每列对应的数据点个数
-    if (length < OLED_WIDTH)
-    {
-        samplesPerPixel = 1;
-    }
-    else
-    {
-        // 当长度为 OLED_WIDTH 的倍数时，每列显示 length/OLED_WIDTH 个数据
-        samplesPerPixel = length / OLED_WIDTH;
-    }
+//    // 根据输入长度决定每列对应的数据点个数
+//    if (length < OLED_WIDTH)
+//    {
+//        samplesPerPixel = 1;
+//    }
+//    else
+//    {
+//        // 当长度为 OLED_WIDTH 的倍数时，每列显示 length/OLED_WIDTH 个数据
+//        samplesPerPixel = length / OLED_WIDTH;
+//    }
 
-    // 如有需要，首先清除显示区域和 OLED 缓冲区
-    //ClearRectangleStr();
-		OLED_CLS();
-    OLED_ClearBuffer();
+//    // 如有需要，首先清除显示区域和 OLED 缓冲区
+//    ClearRectangleStr();
+////		OLED_CLS();
+//    OLED_ClearBuffer();
 
+//    
 //    // =====================================================
-//    // 绘制正方形网格
+//    // 抽样显示数据
 //    // =====================================================
-
-//    // 绘制一条水平网格线（例如在 y = 35 像素处）
 //    for (x = 0; x < OLED_WIDTH; x++)
 //    {
-//        OLED_DrawPixel(x, 35);
-//    }
-
-//    // 绘制其他水平网格线，每 GRID_CELL_SIZE 个像素绘制 1 条
-//    for (y = GRID_TOP; y <= GRID_BOTTOM; y += GRID_CELL_SIZE)
-//    {
-//        for (x = 0; x < OLED_WIDTH; x++)
+//        // 计算本列样本在缓冲区中的索引
+//        uint32_t index = x * samplesPerPixel;
+//        if (index >= length)
 //        {
-//            if (x % 8 == 0)
-//            {
-//                OLED_DrawPixel(x, y);
-//            }
+//            index = length - 1;
 //        }
-//    }
 
-//    // 绘制垂直网格线，每 GRID_CELL_SIZE 个像素绘制
-//    for (x = 0; x < OLED_WIDTH; x += GRID_CELL_SIZE)
-//    {
-//        // 此处例如只对 x 为 32 的倍数的列绘制完整的垂直线
-//        if (x % 32 == 0)
-//        {
-//            for (y = GRID_TOP; y <= GRID_BOTTOM; y++)
-//            {
-//                OLED_DrawPixel(x, y);
-//            }
-//        }
+//        // 将 ADC 数据映射到 y 坐标：
+//        // 1. 首先将 ADC 数据按比例缩放到 0 ~ (OLED_HEIGHT - 1 - 8) 范围内（预留顶部 8 行）
+//        // 2. 然后 y 坐标翻转：OLED 顶部为 8 像素，底部为 OLED_HEIGHT-1
+//        y = (halfBuffer[index] * (OLED_HEIGHT - 1 - 8)) / ADC_MAX_VALUE;
+//        //y = (OLED_HEIGHT - 1) - y;
+//        
+//        // 绘制该采样对应的点
+//        OLED_DrawWave(x, y); //使用这个方法不用反转坐标
 //    }
+		uint8_t x, y;
 
-    // =====================================================
-    // 抽样显示数据
-    // =====================================================
+    // 清除显示区域和 OLED 缓冲区
+    ClearRectangleStr();
+    OLED_ClearBuffer();
+
+    if (length == 0)
+    {
+        return; // 处理长度为0的情况，避免除以零
+    }
+
+    // 遍历每一列
     for (x = 0; x < OLED_WIDTH; x++)
     {
-        // 计算本列样本在缓冲区中的索引
-        uint32_t index = x * samplesPerPixel;
+        // 计算当前列对应的数据点索引（线性插值）
+        uint32_t index = ( (uint32_t)x * (length - 1) ) / (OLED_WIDTH - 1);
+
+        // 确保索引不越界
         if (index >= length)
         {
             index = length - 1;
         }
 
-        // 将 ADC 数据映射到 y 坐标：
-        // 1. 首先将 ADC 数据按比例缩放到 0 ~ (OLED_HEIGHT - 1 - 8) 范围内（预留顶部 8 行）
-        // 2. 然后 y 坐标翻转：OLED 顶部为 8 像素，底部为 OLED_HEIGHT-1
+        // 将 ADC 值映射到 Y 轴坐标（预留顶部8像素）
         y = (halfBuffer[index] * (OLED_HEIGHT - 1 - 8)) / ADC_MAX_VALUE;
-        //y = (OLED_HEIGHT - 1) - y;
-        
-        // 绘制该采样对应的点
-        OLED_DrawWave(x, y); //使用这个方法不用反转坐标
+
+        // 绘制波形点
+        OLED_DrawWave(x, y);
     }
+		// =====================================================
+    // 绘制正方形网格
+    // =====================================================
+
+    // 绘制一条水平网格线（例如在 y = 35 像素处）
+    for (x = 0; x < OLED_WIDTH; x++)
+    {
+        OLED_DrawPixel(x, 35);
+    }
+
+    // 绘制其他水平网格线，每 GRID_CELL_SIZE 个像素绘制 1 条
+    for (y = GRID_TOP; y <= GRID_BOTTOM; y += GRID_CELL_SIZE)
+    {
+        for (x = 0; x < OLED_WIDTH; x++)
+        {
+            if (x % 8 == 0)
+            {
+                OLED_DrawPixel(x, y);
+            }
+        }
+    }
+
+    // 绘制垂直网格线，每 GRID_CELL_SIZE 个像素绘制
+    for (x = 0; x < OLED_WIDTH; x += GRID_CELL_SIZE)
+    {
+        // 此处例如只对 x 为 32 的倍数的列绘制完整的垂直线
+        if (x % 32 == 0)
+        {
+            for (y = GRID_TOP; y <= GRID_BOTTOM; y++)
+            {
+                OLED_DrawPixel(x, y);
+            }
+        }
+    }
+
 		// 如有屏幕刷新函数，可在此调用（例如 OLED_UpdateScreen() 或 OLED_UpdatePage()）
     // 例如：OLED_UpdatePage();
 
@@ -242,92 +274,9 @@ void Write_DAC(uint8_t value) {
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	uint8_t x,y;//绘图参数
-	float mean = 0;
-	uint8_t crossing_count = 0;
-	int first_crossing = -1;
-  int last_crossing = -1;
-	float samples_per_period = 0;
-	float period = 0;
-	float frequency = 0;
   if(htim->Instance == TIM2)
   {	
-		uint16_t tableIndex = (uint16_t)(phase * SINE_TABLE_SIZE / (2.0 * M_PI));
-        if (tableIndex >= SINE_TABLE_SIZE)
-        {
-            tableIndex = 0;
-        }
-        // 直接从表中获取对应的 DAC 输出值
-        uint16_t dacValue = table[tableIndex];
-				Write_DAC(dacValue);
-    //HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
-		//OLED_CLS();
-		//uint32_t temp = HAL_ADC_GetValue(&hadc1);
-		//OLED_ShowNum(20,3,temp,4,2);
-		/* 开始 ADC 转换 */
-    HAL_ADC_Start(&hadc1);
-    
-    /* 轮询等待转换完成，超时时间建议根据实际情况适当调整 */
-    if(HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
-    {
-      adcValue = HAL_ADC_GetValue(&hadc1);
-      /* 在这里可以处理、保存或发送 ADC 转换得到的 adcValue */
-      /* 例如：将 adcValue 存入全局缓冲区，通过 UART 输出等 */
-			adcBuffer[counter] = adcValue;
-    }
-		if(counter>127) {//缓冲区满
-			ClearRectangleStr();
-			OLED_ClearBuffer();
-			for (x = 0; x<OLED_WIDTH; x++)
-		{
-			OLED_DrawPixel(x,35);
-		}
-    for (y = GRID_TOP; y <= GRID_BOTTOM; y += GRID_CELL_SIZE)
-    {
-        for (x = 0; x < OLED_WIDTH; x++)
-        {
-            if(x % 8 == 0) {OLED_DrawPixel(x, y);}
-					
-        }
-    }
-    // 绘制垂直网格线
-    for (x = 0; x < OLED_WIDTH; x += GRID_CELL_SIZE)
-    {
-        if (x % 32 == 0){
-					for (y = GRID_TOP; y <= GRID_BOTTOM; y++)
-					{
-            OLED_DrawPixel(x, y);
-					}
-				}
-    }
-			mean = ProcessADCData(&adcBuffer[0],ADC_BUFFER_SIZE);
-			for (size_t i = 1; i < ADC_BUFFER_SIZE; i++)
-			{
-        if ((adcBuffer[i - 1] < mean) && (adcBuffer[i] >= mean))
-        {
-            if (first_crossing < 0)
-            {
-              first_crossing = (int)i;
-							crossing_count++;
-            }
-            last_crossing = (int)i;
-						crossing_count++;
-        }
-			}
-			samples_per_period = (last_crossing - first_crossing)/crossing_count;
-			period = samples_per_period / SAMPLE_RATE;
-			frequency = 1.0 / period;
-			OLED_ShowFloat(0,0,frequency,4,2,2);
-			counter=0;//重置缓冲区顶指针，不清空缓冲区
-		}
-    // 计算周期（秒）和频率（Hz）
-		OLED_DrawPixel(counter, OLED_HEIGHT- 1 - ((adcValue * (OLED_HEIGHT - 1 - 8)) / ADC_MAX_VALUE));
-		counter++;
-    phase += 2.0 * M_PI * sineFrequency * timeStep;
-        if (phase >= 2.0 * M_PI)
-        {
-            phase -= 2.0 * M_PI;
-        }
+		
   }
 	else if (htim->Instance == TIM3) {
 //        //清除中断标志位
@@ -392,9 +341,62 @@ void DrawSineWave(void)
         // 根据正弦公式计算 y 坐标，并加上中心偏移
         y = (int)(center + amplitude * sin(angle));
         // 绘制像素
-        OLED_DrawPixel(x, y);
+        OLED_DrawWave(x, y);
 				//HAL_Delay(100);
     }
+}
+
+
+float CalculateFrequency(volatile uint16_t *temp_buf, size_t buf_size, float mean)
+{
+    uint32_t firstTimestamp = 0;      // 第一次过零时的时间戳
+    uint32_t previousTimestamp = 0;   // 上一次过零的时间戳
+    uint32_t cumulativeInterval = 0;  // 累计相邻两个过零之间的时间间隔(ms)
+    uint16_t crossingCount = 0;       // 过零点计数
+    // 遍历 ADC 数据缓冲区，寻找过零点（从低于均值跃升到大于等于均值）
+    for (size_t i = 1; i < buf_size; i++)
+    {
+        if ((temp_buf[i - 1] < mean) && (temp_buf[i] >= mean ))
+        {
+            // 当检测到过零点时，马上通过 HAL 库获取当前内核时间戳（单位 ms）
+            uint32_t currentTimestamp = i;
+
+            if (crossingCount == 0)
+            {
+                // 第一次检测到过零点，记录时间戳
+                firstTimestamp = currentTimestamp;
+            }
+            else
+            {
+                // 累计相邻两个过零之间的时间差
+                cumulativeInterval += (currentTimestamp - previousTimestamp);
+            }
+
+            // 更新上一个过零点的时间戳，并计数
+            previousTimestamp = currentTimestamp;
+            crossingCount++;
+        }
+    }
+
+    float frequency = 0.0f;
+
+    // 至少需要 2 个过零点来计算周期（即至少一个完整周期的采样间隔）
+    if (crossingCount > 1)
+    {
+        // 计算平均周期，注意累计的时间间隔个数为 crossingCount - 1
+        uint32_t averagePeriod_ms = cumulativeInterval / (crossingCount - 1);
+        // 将周期转换为秒
+        float period_sec = averagePeriod_ms / 1000.0f;
+        // 计算频率 (Hz)
+        frequency = 1.0f / period_sec;
+    }
+    else
+    {
+        // 如果过零点不足，无法计算正确频率，可返回 0 或用于错误处理
+        frequency = 0.0f;
+    }
+
+    return frequency;
 }
 
 /* USER CODE END 0 */
@@ -407,7 +409,9 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+	float mean = 0;										// 用于频率计算
+	float freq = 0;
+	uint16_t temp_buf[ADC_BUFFER_SIZE] = {0};
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -433,6 +437,7 @@ int main(void)
   MX_TIM2_Init();
   MX_I2C2_Init();
   MX_TIM3_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 	
 	for (int i = 0; i < SINE_TABLE_SIZE; i++) {
@@ -517,8 +522,12 @@ int main(void)
 		}
 		else if(flag_fullbuf == 1){
 			/* 处理缓冲区后半部分的数据 */
-			DisplayHalfBuffer(&adcBuffer[0],ADC_BUFFER_SIZE);
-//  	ProcessADCData(&adcBuffer[ADC_BUFFER_SIZE / 2], ADC_BUFFER_SIZE / 2);
+			memcpy(&temp_buf[0],&adcBuffer[0],ADC_BUFFER_SIZE); //保护现场
+			DisplayHalfBuffer(&temp_buf[0],ADC_BUFFER_SIZE);
+			mean = ProcessADCData(&temp_buf[0], ADC_BUFFER_SIZE);
+			OLED_ShowFloat(30,0,mean * 3.3 /4096 ,4,2,2); //显示平均值
+			freq = CalculateFrequency(&temp_buf[0],ADC_BUFFER_SIZE, mean);
+			OLED_ShowFloat(0,0,freq,4,2,2);
 			flag_fullbuf = 0;
 		}
 		HAL_Delay(100);
