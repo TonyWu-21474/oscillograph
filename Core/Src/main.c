@@ -439,7 +439,8 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-	
+	HAL_TIM_Encoder_Start(&htim1,TIM_CHANNEL_ALL);
+	int count = 0;
 	for (int i = 0; i < SINE_TABLE_SIZE; i++) {
         // 计算当前角度：将 0～2π 均分 64 个点
         double angle = 2.0 * M_PI * i / SINE_TABLE_SIZE;
@@ -520,7 +521,7 @@ int main(void)
 //  	ProcessADCData(&adcBuffer[0], ADC_BUFFER_SIZE / 2);
 			flag_halfbuf = 0;
 		}
-		else if(flag_fullbuf == 1){
+		else if(flag_fullbuf == 1 && 0){
 			/* 处理缓冲区后半部分的数据 */
 			memcpy(&temp_buf[0],&adcBuffer[0],ADC_BUFFER_SIZE); //保护现场
 			DisplayHalfBuffer(&temp_buf[0],ADC_BUFFER_SIZE);
@@ -531,6 +532,8 @@ int main(void)
 			flag_fullbuf = 0;
 		}
 		HAL_Delay(100);
+		count = __HAL_TIM_GET_COUNTER(&htim1);
+		OLED_ShowNum(0,0,count,4,1);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
