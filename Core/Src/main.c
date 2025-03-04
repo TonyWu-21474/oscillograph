@@ -52,9 +52,13 @@ uint16_t temp_buf[ADC_BUFFER_SIZE / 2] = {0};
 volatile uint16_t adcValue = 0;
 volatile int flag_halfbuf = 0;
 volatile int flag_fullbuf = 0;	//半满/全满标志位
+volatile uint8_t mod_0 = 0;
+volatile uint8_t mod_1 = 0;		//零级选择与一级选择。零级选择对应旋转编码器按动；一级选择对应旋转。
+uint8_t horizontal_multiplier = 1;//水平缩放系数
+uint8_t vertical_multiplier = 1;//垂直缩放系数
 #define SAMPLE_RATE 1000    // 如需 1000Hz，请改为 1000
 
-#if SAMPLE_RATE == 500		//别太高
+#if SAMPLE_RATE == 500		//别太高 25/3/4/1843：好像高点也可以
   #define TIM_PERIOD (2000 - 1)  // 2ms 周期（假设定时器时钟为 1MHz）现在配置为10MHz
 #elif SAMPLE_RATE == 1000
   #define TIM_PERIOD (1000 - 1)  // 1ms 周期
@@ -200,7 +204,9 @@ void DisplayHalfBuffer(volatile uint16_t *halfBuffer, uint32_t length)//传入任意
 
         // 将 ADC 值映射到 Y 轴坐标（预留顶部8像素）
         y = (halfBuffer[index] * (OLED_HEIGHT - 1 - 8)) / ADC_MAX_VALUE;
-
+				y = (y-35)*vertical_multiplier + 35;
+				if (y < 0) y = 0;
+				else if (y > 55) y = 55;
         // 绘制波形点
         OLED_DrawWave(x, y);
     }
@@ -401,6 +407,16 @@ float CalculateFrequency(volatile uint16_t *temp_buf, size_t buf_size, float mea
     return frequency;
 }
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+		mod_1 = 1;
+		HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+		mod_0++; //一级模式变量赋值
+		//模式1：水平调节
+		//模式2：垂直调节
+		//模式3：输出波形调节
+		//模式4：输出幅度调节
+}
 /* USER CODE END 0 */
 
 /**
@@ -413,7 +429,6 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	float mean = 0;										// 用于频率计算
 	float freq = 0;
-	uint8_t multiplier = 1;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -471,9 +486,12 @@ int main(void)
 	OLED_Init();
 	OLED_ON();
 	OLED_CLS();
-	OLED_ShowStr(20,3,"Pocket Instrument",1);//这一部分代码没有问题，另外：不要在注释里打//
+	OLED_ShowStr(0,0,"22211133",1);
+	OLED_ShowStr(0,1,"School of ECE",1);
+	OLED_ShowStr(0,2,"Wu Qianhan",1);
+	OLED_ShowStr(0,3,"Pocket Instrument",1);//这一部分代码没有问题，另外：不要在注释里打//
 	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
-	HAL_Delay(1000);
+	HAL_Delay(3000);
 	OLED_CLS();
 	DrawSineWave();
 	HAL_Delay(1000);
@@ -503,7 +521,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+		//HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
 		if(flag_halfbuf == 1 && 0){
 			/* 处理缓冲区前半部分的数据 */
 			DisplayHalfBuffer(&adcBuffer[0],ADC_BUFFER_SIZE / 2);
@@ -512,7 +530,7 @@ int main(void)
 		}
 		else if(flag_fullbuf == 1){
 			/* 处理缓冲区后半部分的数据 */
-			DisplayHalfBuffer(&temp_buf[0],(ADC_BUFFER_SIZE / 2)/multiplier);
+			DisplayHalfBuffer(&temp_buf[0],(ADC_BUFFER_SIZE / 2)/horizontal_multiplier);
 			mean = ProcessADCData(&temp_buf[0], ADC_BUFFER_SIZE / 2);
 			OLED_ShowFloat(30,0,mean * 3.3 /4096 ,4,2,2); //显示平均值
 			freq = CalculateFrequency(&temp_buf[0],ADC_BUFFER_SIZE / 2, mean);
@@ -520,20 +538,42 @@ int main(void)
 			flag_fullbuf = 0;
 		}
 		HAL_Delay(100);
+		//读取旋转编码器值
 		count = __HAL_TIM_GET_COUNTER(&htim1);
+		//二级模式变量赋值
 		if (count_0 < count){
-			multiplier = 2 *multiplier;
+			mod_1++;
 			count_0 = count;
 		}
 		else if(count_0 > count){
-			multiplier = multiplier / 2 ;
+			mod_1--;
 			count_0 = count;
 		}
-		if(multiplier > 16){
-			multiplier = 16;
+		else{
+			mod_1 = mod_1;
 		}
-		else if(multiplier <= 1){
-			multiplier = 1;
+		if(mod_1<1) mod_1 = 1;
+		
+		if(mod_0 % 4 == 0){//当工作在模式1
+				OLED_ShowStr(80,0,"hor",1);
+				horizontal_multiplier = mod_1;
+				if(horizontal_multiplier > 32){
+					horizontal_multiplier = 32;
+				}
+				else if(horizontal_multiplier <= 1){
+					horizontal_multiplier = 1;
+				}
+			}
+		else if(mod_0 % 4 == 1){
+				OLED_ShowStr(80,0,"ver",1);
+				OLED_ShowNum(110,0,vertical_multiplier,2,2);
+				vertical_multiplier = mod_1;
+		}
+		else if(mod_0 % 4 == 2){
+				OLED_ShowStr(80,0,"wav",1);
+		}
+		else if(mod_0 % 4 == 3){
+				OLED_ShowStr(80,0,"freq",1);
 		}
 		//OLED_ShowNum(0,0,count,5,2);
 		//旋转编码器测试代码

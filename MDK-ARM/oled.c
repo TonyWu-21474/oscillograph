@@ -180,14 +180,6 @@ void OLED_ShowNum(u8 x,u8 y,u32 num,u8 len,u8 size2)//size参数固定为2
 	 	OLED_ShowChar(x+(size2)*3*t,y,temp+'0',size2); 
 	}
 } 
-void OLED_ShowNum1(uint8_t x, uint8_t y, uint32_t Number, uint8_t Length)
-{
-    uint8_t i;
-    for (i = 0; i < Length; i++)
-    {
-        OLED_ShowChar(x, y, Number / oled_pow(10, Length - i - 1) % 10 + '0',1);
-    }
-}
 void OLED_ShowChar(u8 x,u8 y,u8 chr,u8 Char_Size)
 {      	
 	unsigned char c=0,i=0;	
@@ -268,43 +260,7 @@ void OLED_ClearBuffer(void)
     // 可以直接使用 memset 将整个区域清零
     // memset(oled_buffer, 0, sizeof(oled_buffer));
 }
-void ClearRectFrom(uint8_t x, uint8_t y)
-{
-    // 检查输入坐标是否有效
-    if (x >= OLED_WIDTH || y >= OLED_HEIGHT) {
-        return;
-    }
-    
-    // 计算受影响的页面范围
-    uint8_t firstPage = y / 8;          // 起始页面
-    uint8_t lastPage  = (OLED_HEIGHT - 1) / 8;   // 最后一页（63/8 = 7）
 
-    // 对每一页进行遍历，从首个受影响页面到最后页面
-    for (uint8_t page = firstPage; page <= lastPage; page++)
-    {
-        uint8_t mask;
-        if (page == firstPage) {
-            // 首个页面中，清除的起始像素为 y % 8（即该页面内从此比特位开始）
-            // 例如 y=10 时，10%8==2，则清除此页中第2位到第7位（0xFF << 2 => 0xFC）
-            mask = 0xFF << (y % 8);
-        } else {
-            // 对于后续页面，整个页面都在清除范围内
-            mask = 0xFF;
-        }
-        // 以列为单位，遍历从给定x到右侧边界
-        for (uint8_t col = x; col < OLED_WIDTH; col++)
-        {
-            /* 
-             * 对应位置的字节中，利用 bitwise AND 清零那些位：
-             * 原因：oled_buffer[page][col]中每个比特对应一个像素，将其与 ~mask 相与，
-             * 那些 mask 中为 1 的位就会被清0，而其他位保持不变。
-             */
-            oled_buffer[page][col] &= ~mask;
-						
-        }
-    }
-		OLED_UpdatePage();
-}
 void ClearRectangleStr()//TextSize请默认为1，直接除了第一行清空
 {
     for (int y = 1; y < 8; y++)
@@ -337,14 +293,6 @@ void OLED_ShowFloat(u8 x, u8 y, float num_f, u8 int_len, u8 dec_len, u8 size2)
     }
 }
 //修改缓冲区实现画点
-void setPixel(uint8_t x, uint8_t y) //弃用
-{
-//    if (x >= OLED_WIDTH || y >= OLED_HEIGHT)
-//        return;
-//    uint8_t page = y / 8;          // 每页 8 行像素
-//    uint8_t bit_position = y % 8;
-//    oled_buffer[page][x] |= (1 << bit_position);
-}
 void Before_State_Update(uint8_t y)//根据y的值，求出前一个数据的有关参数
 {
 	Bef[0]=7-y/8;
