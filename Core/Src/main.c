@@ -44,10 +44,11 @@ volatile double phase = 0.0;
 volatile int counter = 0;
 volatile double sineFrequency = 1000.0;  // 正弦波频率，初始为 1 kHz
 const double timeStep = 1.0 / UPDATE_RATE;  // 每个采样点的时间间隔（秒）
-#define ADC_BUFFER_SIZE 128
+#define ADC_BUFFER_SIZE 256                 //别改这里
 #define SINE_TABLE_SIZE 128
 volatile uint16_t adcBuffer[ADC_BUFFER_SIZE]; // DMA数据缓冲区,每半缓冲区绘制一次图
 volatile uint8_t table[SINE_TABLE_SIZE]={0};//正弦表
+uint16_t temp_buf[ADC_BUFFER_SIZE / 2] = {0};
 volatile uint16_t adcValue = 0;
 volatile int flag_halfbuf = 0;
 volatile int flag_fullbuf = 0;	//半满/全满标志位
@@ -105,6 +106,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
   */
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
+	if (flag_fullbuf != 1) memcpy(&temp_buf[0],&adcBuffer[0],ADC_BUFFER_SIZE); //保护现场
 	flag_fullbuf = 1;
 }
 /**
@@ -411,7 +413,6 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	float mean = 0;										// 用于频率计算
 	float freq = 0;
-	uint16_t temp_buf[ADC_BUFFER_SIZE] = {0};
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -523,7 +524,6 @@ int main(void)
 		}
 		else if(flag_fullbuf == 1){
 			/* 处理缓冲区后半部分的数据 */
-			memcpy(&temp_buf[0],&adcBuffer[0],ADC_BUFFER_SIZE); //保护现场
 			DisplayHalfBuffer(&temp_buf[0],ADC_BUFFER_SIZE / 2);
 			mean = ProcessADCData(&temp_buf[0], ADC_BUFFER_SIZE / 2);
 			OLED_ShowFloat(30,0,mean * 3.3 /4096 ,4,2,2); //显示平均值
