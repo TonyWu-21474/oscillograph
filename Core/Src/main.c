@@ -44,7 +44,7 @@ volatile double phase = 0.0;
 volatile int counter = 0;
 volatile double sineFrequency = 1000.0;  // 正弦波频率，初始为 1 kHz
 const double timeStep = 1.0 / UPDATE_RATE;  // 每个采样点的时间间隔（秒）
-#define ADC_BUFFER_SIZE 256                 //别改这里
+#define ADC_BUFFER_SIZE 1024                 //别改这里 25/3/4/1414：改了好像也可以
 #define SINE_TABLE_SIZE 128
 volatile uint16_t adcBuffer[ADC_BUFFER_SIZE]; // DMA数据缓冲区,每半缓冲区绘制一次图
 volatile uint8_t table[SINE_TABLE_SIZE]={0};//正弦表
@@ -386,9 +386,9 @@ float CalculateFrequency(volatile uint16_t *temp_buf, size_t buf_size, float mea
     if (crossingCount > 1)
     {
         // 计算平均周期，注意累计的时间间隔个数为 crossingCount - 1
-        uint32_t averagePeriod_ms = cumulativeInterval / (crossingCount - 1);
+        uint32_t averagePeriod_ms = cumulativeInterval / (crossingCount - 1); //采样间隔0.1ms
         // 将周期转换为秒
-        float period_sec = averagePeriod_ms / 1000.0f;
+        float period_sec = averagePeriod_ms / 10000.0f;
         // 计算频率 (Hz)
         frequency = 1.0f / period_sec;
     }
@@ -413,6 +413,7 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	float mean = 0;										// 用于频率计算
 	float freq = 0;
+	uint8_t multiplier = 1;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -477,20 +478,6 @@ int main(void)
 	DrawSineWave();
 	HAL_Delay(1000);
 	OLED_CLS();//自检
-//	for(int i = 0;i<128;i++)
-//	{
-//		for(int j = 0;j<64;j++)
-//		{
-//			OLED_DrawPixel(i,j);
-//		}
-//	}
-//	HAL_Delay(1000);
-//	ClearRectangleStr();
-//	HAL_Delay(1000);
-//	OLED_CLS();
-//	HAL_TIM_Base_Start_IT(&htim2);
-//	__HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
-//	
 	HAL_TIM_Base_Start_IT(&htim3);
 	__HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
 	HAL_Delay(0); 
@@ -509,6 +496,7 @@ int main(void)
 //	}
 		int temp = 0;
 		int value = 0;
+		int count_0 = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -524,7 +512,7 @@ int main(void)
 		}
 		else if(flag_fullbuf == 1){
 			/* 处理缓冲区后半部分的数据 */
-			DisplayHalfBuffer(&temp_buf[0],ADC_BUFFER_SIZE / 2);
+			DisplayHalfBuffer(&temp_buf[0],(ADC_BUFFER_SIZE / 2)/multiplier);
 			mean = ProcessADCData(&temp_buf[0], ADC_BUFFER_SIZE / 2);
 			OLED_ShowFloat(30,0,mean * 3.3 /4096 ,4,2,2); //显示平均值
 			freq = CalculateFrequency(&temp_buf[0],ADC_BUFFER_SIZE / 2, mean);
@@ -532,8 +520,22 @@ int main(void)
 			flag_fullbuf = 0;
 		}
 		HAL_Delay(100);
-//		count = __HAL_TIM_GET_COUNTER(&htim1);
-//		OLED_ShowNum(0,0,count,5,2);
+		count = __HAL_TIM_GET_COUNTER(&htim1);
+		if (count_0 < count){
+			multiplier = 2 *multiplier;
+			count_0 = count;
+		}
+		else if(count_0 > count){
+			multiplier = multiplier / 2 ;
+			count_0 = count;
+		}
+		if(multiplier > 16){
+			multiplier = 16;
+		}
+		else if(multiplier <= 1){
+			multiplier = 1;
+		}
+		//OLED_ShowNum(0,0,count,5,2);
 		//旋转编码器测试代码
     /* USER CODE END WHILE */
 

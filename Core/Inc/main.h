@@ -59,6 +59,7 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define KEy_Pin GPIO_PIN_15
 #define KEy_GPIO_Port GPIOB
+#define KEy_EXTI_IRQn EXTI15_10_IRQn
 
 /* USER CODE BEGIN Private defines */
 
