@@ -521,19 +521,20 @@ int main(void)
 //  	ProcessADCData(&adcBuffer[0], ADC_BUFFER_SIZE / 2);
 			flag_halfbuf = 0;
 		}
-		else if(flag_fullbuf == 1 && 0){
+		else if(flag_fullbuf == 1){
 			/* 处理缓冲区后半部分的数据 */
 			memcpy(&temp_buf[0],&adcBuffer[0],ADC_BUFFER_SIZE); //保护现场
-			DisplayHalfBuffer(&temp_buf[0],ADC_BUFFER_SIZE);
-			mean = ProcessADCData(&temp_buf[0], ADC_BUFFER_SIZE);
+			DisplayHalfBuffer(&temp_buf[0],ADC_BUFFER_SIZE / 2);
+			mean = ProcessADCData(&temp_buf[0], ADC_BUFFER_SIZE / 2);
 			OLED_ShowFloat(30,0,mean * 3.3 /4096 ,4,2,2); //显示平均值
-			freq = CalculateFrequency(&temp_buf[0],ADC_BUFFER_SIZE, mean);
+			freq = CalculateFrequency(&temp_buf[0],ADC_BUFFER_SIZE / 2, mean);
 			OLED_ShowFloat(0,0,freq,4,2,2);
 			flag_fullbuf = 0;
 		}
 		HAL_Delay(100);
-		count = __HAL_TIM_GET_COUNTER(&htim1);
-		OLED_ShowNum(0,0,count,4,1);
+//		count = __HAL_TIM_GET_COUNTER(&htim1);
+//		OLED_ShowNum(0,0,count,5,2);
+		//旋转编码器测试代码
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

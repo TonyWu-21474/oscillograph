@@ -3,7 +3,7 @@
 <title>Static Call Graph - [oscillograph\oscillograph.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image oscillograph\oscillograph.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6220000: Last Updated: Mon Mar  3 16:48:28 2025
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6220000: Last Updated: Tue Mar  4 14:05:48 2025
 <BR><P>
 <H3>Maximum Stack Usage =        624 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -1262,8 +1262,7 @@ Global Symbols
 <BR>[Calls]<UL><LI><a href="#[d3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OLED_ShowChar
 <LI><a href="#[d5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;oled_pow
 </UL>
-<BR>[Called By]<UL><LI><a href="#[53]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
-<LI><a href="#[d4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OLED_ShowFloat
+<BR>[Called By]<UL><LI><a href="#[d4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OLED_ShowFloat
 </UL>
 
 <P><STRONG><a name="[68]"></a>OLED_ShowStr</STRONG> (Thumb, 442 bytes, Stack size 24 bytes, oled.o(.text.OLED_ShowStr))
@@ -1386,7 +1385,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[af]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_PeriodElapsedCallback
 </UL>
 
-<P><STRONG><a name="[53]"></a>main</STRONG> (Thumb, 832 bytes, Stack size 368 bytes, main.o(.text.main))
+<P><STRONG><a name="[53]"></a>main</STRONG> (Thumb, 792 bytes, Stack size 368 bytes, main.o(.text.main))
 <BR><BR>[Stack]<UL><LI>Max Depth = 624 + Unknown Stack Size
 <LI>Call Chain = main &rArr; OLED_ShowFloat &rArr; OLED_ShowNum &rArr; OLED_ShowChar &rArr; OLED_SetPos &rArr; WriteCmd &rArr; HAL_I2C_Mem_Write &rArr; I2C_RequestMemoryWrite &rArr; I2C_WaitOnMasterAddressFlagUntilTimeout
 </UL>
@@ -1412,7 +1411,6 @@ Global Symbols
 <LI><a href="#[6a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DisplayHalfBuffer
 <LI><a href="#[de]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ProcessADCData
 <LI><a href="#[d4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OLED_ShowFloat
-<LI><a href="#[d6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OLED_ShowNum
 <LI><a href="#[68]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OLED_ShowStr
 <LI><a href="#[d1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OLED_ON
 <LI><a href="#[c9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OLED_CLS
