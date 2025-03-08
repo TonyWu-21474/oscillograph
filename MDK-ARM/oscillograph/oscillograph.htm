@@ -3,11 +3,11 @@
 <title>Static Call Graph - [oscillograph\oscillograph.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image oscillograph\oscillograph.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6220000: Last Updated: Tue Mar  4 20:34:03 2025
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6220000: Last Updated: Thu Mar  6 23:45:16 2025
 <BR><P>
-<H3>Maximum Stack Usage =        424 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
+<H3>Maximum Stack Usage =        552 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
-main &rArr; DrawSineWave &rArr; __hardfp_sin &rArr; __ieee754_rem_pio2 &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
+main &rArr; DrawSineWave &rArr; __hardfp_sin &rArr; __ieee754_rem_pio2 &rArr; __aeabi_dsub &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
 <P>
 <H3>
 Mutually Recursive functions
@@ -330,7 +330,8 @@ Global Symbols
 <LI><a href="#[54]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;_double_round
 <LI><a href="#[53]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;_double_epilogue
 </UL>
-<BR>[Called By]<UL><LI><a href="#[43]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+<BR>[Called By]<UL><LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dsub
+<LI><a href="#[43]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 <LI><a href="#[6a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DrawSineWave
 <LI><a href="#[a9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_PeriodElapsedCallback
 <LI><a href="#[df]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__kernel_poly
@@ -338,7 +339,6 @@ Global Symbols
 <LI><a href="#[db]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__ieee754_rem_pio2
 <LI><a href="#[da]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__mathlib_dbl_infnan
 <LI><a href="#[56]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_drsub
-<LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dsub
 </UL>
 
 <P><STRONG><a name="[55]"></a>__aeabi_dsub</STRONG> (Thumb, 6 bytes, Stack size 0 bytes, dadd.o(.text))
@@ -346,7 +346,8 @@ Global Symbols
 </UL>
 <BR>[Calls]<UL><LI><a href="#[51]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dadd
 </UL>
-<BR>[Called By]<UL><LI><a href="#[dd]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__kernel_sin
+<BR>[Called By]<UL><LI><a href="#[43]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+<LI><a href="#[dd]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__kernel_sin
 <LI><a href="#[db]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__ieee754_rem_pio2
 <LI><a href="#[dc]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__kernel_cos
 </UL>
@@ -552,7 +553,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[6a]"></a>DrawSineWave</STRONG> (Thumb, 208 bytes, Stack size 56 bytes, main.o(.text.DrawSineWave))
-<BR><BR>[Stack]<UL><LI>Max Depth = 296<LI>Call Chain = DrawSineWave &rArr; __hardfp_sin &rArr; __ieee754_rem_pio2 &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
+<BR><BR>[Stack]<UL><LI>Max Depth = 296<LI>Call Chain = DrawSineWave &rArr; __hardfp_sin &rArr; __ieee754_rem_pio2 &rArr; __aeabi_dsub &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
 </UL>
 <BR>[Calls]<UL><LI><a href="#[59]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_i2d
 <LI><a href="#[51]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dadd
@@ -702,7 +703,7 @@ Global Symbols
 <LI><a href="#[ca]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OLED_Init
 </UL>
 
-<P><STRONG><a name="[80]"></a>HAL_GPIO_EXTI_Callback</STRONG> (Thumb, 54 bytes, Stack size 16 bytes, main.o(.text.HAL_GPIO_EXTI_Callback))
+<P><STRONG><a name="[80]"></a>HAL_GPIO_EXTI_Callback</STRONG> (Thumb, 164 bytes, Stack size 16 bytes, main.o(.text.HAL_GPIO_EXTI_Callback))
 <BR><BR>[Stack]<UL><LI>Max Depth = 28<LI>Call Chain = HAL_GPIO_EXTI_Callback &rArr; HAL_GPIO_TogglePin
 </UL>
 <BR>[Calls]<UL><LI><a href="#[81]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_TogglePin
@@ -1050,7 +1051,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[a5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_IRQHandler
 </UL>
 
-<P><STRONG><a name="[a9]"></a>HAL_TIM_PeriodElapsedCallback</STRONG> (Thumb, 336 bytes, Stack size 48 bytes, main.o(.text.HAL_TIM_PeriodElapsedCallback))
+<P><STRONG><a name="[a9]"></a>HAL_TIM_PeriodElapsedCallback</STRONG> (Thumb, 400 bytes, Stack size 48 bytes, main.o(.text.HAL_TIM_PeriodElapsedCallback))
 <BR><BR>[Stack]<UL><LI>Max Depth = 136<LI>Call Chain = HAL_TIM_PeriodElapsedCallback &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
 </UL>
 <BR>[Calls]<UL><LI><a href="#[b6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dcmplt
@@ -1381,8 +1382,8 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[a9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_PeriodElapsedCallback
 </UL>
 
-<P><STRONG><a name="[43]"></a>main</STRONG> (Thumb, 1296 bytes, Stack size 128 bytes, main.o(.text.main))
-<BR><BR>[Stack]<UL><LI>Max Depth = 424<LI>Call Chain = main &rArr; DrawSineWave &rArr; __hardfp_sin &rArr; __ieee754_rem_pio2 &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
+<P><STRONG><a name="[43]"></a>main</STRONG> (Thumb, 2280 bytes, Stack size 256 bytes, main.o(.text.main))
+<BR><BR>[Stack]<UL><LI>Max Depth = 552<LI>Call Chain = main &rArr; DrawSineWave &rArr; __hardfp_sin &rArr; __ieee754_rem_pio2 &rArr; __aeabi_dsub &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
 </UL>
 <BR>[Calls]<UL><LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_d2f
 <LI><a href="#[d6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_f2d
@@ -1391,6 +1392,7 @@ Global Symbols
 <LI><a href="#[6d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Error_Handler
 <LI><a href="#[d3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_Base_Start
 <LI><a href="#[99]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_Base_Init
+<LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dsub
 <LI><a href="#[a3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_Encoder_Start
 <LI><a href="#[be]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_TIM1_Init
 <LI><a href="#[c2]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_TIM3_Init
@@ -1436,7 +1438,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[6b]"></a>__hardfp_sin</STRONG> (Thumb, 180 bytes, Stack size 32 bytes, sin.o(i.__hardfp_sin))
-<BR><BR>[Stack]<UL><LI>Max Depth = 240<LI>Call Chain = __hardfp_sin &rArr; __ieee754_rem_pio2 &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
+<BR><BR>[Stack]<UL><LI>Max Depth = 240<LI>Call Chain = __hardfp_sin &rArr; __ieee754_rem_pio2 &rArr; __aeabi_dsub &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
 </UL>
 <BR>[Calls]<UL><LI><a href="#[d8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__set_errno
 <LI><a href="#[dd]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__kernel_sin
@@ -1450,16 +1452,16 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[db]"></a>__ieee754_rem_pio2</STRONG> (Thumb, 938 bytes, Stack size 120 bytes, rred.o(i.__ieee754_rem_pio2))
-<BR><BR>[Stack]<UL><LI>Max Depth = 208<LI>Call Chain = __ieee754_rem_pio2 &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
+<BR><BR>[Stack]<UL><LI>Max Depth = 208<LI>Call Chain = __ieee754_rem_pio2 &rArr; __aeabi_dsub &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
 </UL>
-<BR>[Calls]<UL><LI><a href="#[59]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_i2d
+<BR>[Calls]<UL><LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dsub
+<LI><a href="#[59]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_i2d
 <LI><a href="#[51]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dadd
 <LI><a href="#[5a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_d2iz
 <LI><a href="#[57]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dmul
 <LI><a href="#[de]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;fabs
 <LI><a href="#[5e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_ui2d
 <LI><a href="#[56]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_drsub
-<LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dsub
 </UL>
 <BR>[Called By]<UL><LI><a href="#[6b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__hardfp_sin
 </UL>
@@ -1467,11 +1469,11 @@ Global Symbols
 <P><STRONG><a name="[dc]"></a>__kernel_cos</STRONG> (Thumb, 322 bytes, Stack size 64 bytes, cos_i.o(i.__kernel_cos))
 <BR><BR>[Stack]<UL><LI>Max Depth = 176<LI>Call Chain = __kernel_cos &rArr; __kernel_poly &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
 </UL>
-<BR>[Calls]<UL><LI><a href="#[5a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_d2iz
+<BR>[Calls]<UL><LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dsub
+<LI><a href="#[5a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_d2iz
 <LI><a href="#[57]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dmul
 <LI><a href="#[df]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__kernel_poly
 <LI><a href="#[56]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_drsub
-<LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dsub
 </UL>
 <BR>[Called By]<UL><LI><a href="#[6b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__hardfp_sin
 </UL>
@@ -1489,13 +1491,13 @@ Global Symbols
 <P><STRONG><a name="[dd]"></a>__kernel_sin</STRONG> (Thumb, 280 bytes, Stack size 72 bytes, sin_i.o(i.__kernel_sin))
 <BR><BR>[Stack]<UL><LI>Max Depth = 184<LI>Call Chain = __kernel_sin &rArr; __kernel_poly &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
 </UL>
-<BR>[Calls]<UL><LI><a href="#[51]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dadd
+<BR>[Calls]<UL><LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dsub
+<LI><a href="#[51]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dadd
 <LI><a href="#[57]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dmul
 <LI><a href="#[df]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__kernel_poly
 <LI><a href="#[e0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__ARM_fpclassify
 <LI><a href="#[e1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__mathlib_dbl_underflow
 <LI><a href="#[56]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_drsub
-<LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_dsub
 </UL>
 <BR>[Called By]<UL><LI><a href="#[6b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__hardfp_sin
 </UL>

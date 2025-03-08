@@ -47,7 +47,7 @@ const double timeStep = 1.0 / UPDATE_RATE;  // 每个采样点的时间间隔（秒）
 #define ADC_BUFFER_SIZE 1024                 //别改这里 25/3/4/1414：改了好像也可以
 #define SINE_TABLE_SIZE 128
 volatile uint16_t adcBuffer[ADC_BUFFER_SIZE]; // DMA数据缓冲区,每半缓冲区绘制一次图
-volatile uint8_t table[SINE_TABLE_SIZE]={0};//正弦表
+volatile uint8_t table[4][SINE_TABLE_SIZE]={0};//正弦表
 uint16_t temp_buf[ADC_BUFFER_SIZE / 2] = {0};
 volatile uint16_t adcValue = 0;
 volatile int flag_halfbuf = 0;
@@ -56,6 +56,9 @@ volatile uint8_t mod_0 = 0;
 volatile uint8_t mod_1 = 0;		//零级选择与一级选择。零级选择对应旋转编码器按动；一级选择对应旋转。
 uint8_t horizontal_multiplier = 1;//水平缩放系数
 uint8_t vertical_multiplier = 1;//垂直缩放系数
+float amp = 1;	//发波幅度系数
+uint8_t wave_form = 0;	//波形
+uint8_t stat = 0; //状态，存储切出时mod_1的值。下次切入时将值给到mod_1
 #define SAMPLE_RATE 1000    // 如需 1000Hz，请改为 1000
 
 #if SAMPLE_RATE == 500		//别太高 25/3/4/1843：好像高点也可以
@@ -204,8 +207,8 @@ void DisplayHalfBuffer(volatile uint16_t *halfBuffer, uint32_t length)//传入任意
 
         // 将 ADC 值映射到 Y 轴坐标（预留顶部8像素）
         y = (halfBuffer[index] * (OLED_HEIGHT - 1 - 8)) / ADC_MAX_VALUE;
-				y = (y-35)*vertical_multiplier + 35;
-				if (y < 0) y = 0;
+				y = (y-27)*vertical_multiplier + 27;
+				if (y > 255) y = 0;
 				else if (y > 55) y = 55;
         // 绘制波形点
         OLED_DrawWave(x, y);
@@ -315,10 +318,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         }
 
         // 从查找表中读取预计算的正弦值（已映射至 0-255）
-        uint8_t dacValue = table[tableIndex];
-
+        uint8_t dacValue = table[wave_form % 4][tableIndex];
+				
         // 输出到 DAC
-        Write_DAC(dacValue);
+        Write_DAC((uint8_t)((dacValue - 127) * amp + 127));
 
         // 更新相位：每个采样周期内增加的相位增量为 2π * sineFrequency * timeStep
         phase += 2.0 * M_PI * sineFrequency * timeStep;
@@ -415,7 +418,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		//模式1：水平调节
 		//模式2：垂直调节
 		//模式3：输出波形调节
-		//模式4：输出幅度调节
+		//模式4：输出频率调节
+		//模式5：输出幅度调节
+		if(mod_0 % 5 == 2 || mod_0 % 5 ==4){
+		mod_1 = stat; //模式3,5时存储状态值
+		}
+		else stat = 0; //重置stat
+		__HAL_TIM_SET_COUNTER(&htim1,0);
 }
 /* USER CODE END 0 */
 
@@ -465,7 +474,14 @@ int main(void)
         double sineValue = sin(angle);
         // 映射到 0～255，请注意对浮点值进行四舍五入处理
         double mappedValue = (sineValue + 1.0) / 2.0 * 255.0;
-        table[i] = (uint8_t)(mappedValue + 0.5);
+        table[0][i] = (uint8_t)(mappedValue + 0.5);
+				double tri_value = 1.0 - 4.0 * fabs((double)i / SINE_TABLE_SIZE - 0.5);
+        
+        // 映射到0-255并四舍五入
+        double mapped = (tri_value + 1.0) * (255.0 / 2.0);
+        table[1][i] = (uint8_t)(mapped + 0.5);  // 加0.5实现四舍五入
+				table[2][i] = (1 - i*2/(SINE_TABLE_SIZE)) * 255;
+				table[3][i] = 255;  //直流
     }
 	htim2.Init.Period = TIM_PERIOD;
 	HAL_TIM_Base_Init(&htim2);//配置TIM2参数 
@@ -496,6 +512,8 @@ int main(void)
 	DrawSineWave();
 	HAL_Delay(1000);
 	OLED_CLS();//自检
+	HAL_Delay(1000);
+	OLED_CLS();
 	HAL_TIM_Base_Start_IT(&htim3);
 	__HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
 	HAL_Delay(0); 
@@ -532,12 +550,12 @@ int main(void)
 			/* 处理缓冲区后半部分的数据 */
 			DisplayHalfBuffer(&temp_buf[0],(ADC_BUFFER_SIZE / 2)/horizontal_multiplier);
 			mean = ProcessADCData(&temp_buf[0], ADC_BUFFER_SIZE / 2);
-			OLED_ShowFloat(30,0,mean * 3.3 /4096 ,4,2,2); //显示平均值
+			OLED_ShowFloat(50,0,mean * 3.3 /4096 ,1,2,2); //显示平均值
 			freq = CalculateFrequency(&temp_buf[0],ADC_BUFFER_SIZE / 2, mean);
 			OLED_ShowFloat(0,0,freq,4,2,2);
 			flag_fullbuf = 0;
 		}
-		HAL_Delay(100);
+		
 		//读取旋转编码器值
 		count = __HAL_TIM_GET_COUNTER(&htim1);
 		//二级模式变量赋值
@@ -554,7 +572,7 @@ int main(void)
 		}
 		if(mod_1<1) mod_1 = 1;
 		
-		if(mod_0 % 4 == 0){//当工作在模式1
+		if(mod_0 % 5 == 0){//当工作在模式1
 				OLED_ShowStr(80,0,"hor",1);
 				horizontal_multiplier = mod_1;
 				if(horizontal_multiplier > 32){
@@ -564,17 +582,47 @@ int main(void)
 					horizontal_multiplier = 1;
 				}
 			}
-		else if(mod_0 % 4 == 1){
+		else if(mod_0 % 5 == 1){
 				OLED_ShowStr(80,0,"ver",1);
 				OLED_ShowNum(110,0,vertical_multiplier,2,2);
 				vertical_multiplier = mod_1;
 		}
-		else if(mod_0 % 4 == 2){
+		else if(mod_0 % 5 == 2){
+				wave_form = mod_1 % 4 - 1;
 				OLED_ShowStr(80,0,"wav",1);
+				if(wave_form >= 3 ) wave_form = 3;
+				OLED_ShowNum(110,0,wave_form,1,1);
+				
+//				if (mod_1 != wave_form) wave_form = mod_1 % 4 - 1;
+//				if(wave_form > 3) wave_form = 3;
+//				else if(wave_form > 250) wave_form = 0;
+				stat = mod_1;
 		}
-		else if(mod_0 % 4 == 3){
-				OLED_ShowStr(80,0,"freq",1);
+		else if(mod_0 % 5 == 3){
+				OLED_ShowStr(74,0,"freq",1);
+				int deltaFreq = __HAL_TIM_GET_COUNTER(&htim1);
+				if	(deltaFreq > 60000) {
+					deltaFreq = 65535-deltaFreq;
+					sineFrequency -= deltaFreq;
+				}
+				else if(deltaFreq < 5000){
+					sineFrequency += deltaFreq;
+				}
+				OLED_ShowFloat(100,0,sineFrequency,4,0,2);
 		}
+		else if(mod_0 % 5 ==4){
+				OLED_ShowStr(80,0,"amp",1);
+				OLED_ShowFloat(100,0,amp,1,2,2);
+				int deltaAmp = __HAL_TIM_GET_COUNTER(&htim1);
+				if	(deltaAmp > 60000) {
+					deltaAmp = 65535-deltaAmp;
+					amp -= 0.1*deltaAmp;
+				}
+				else if(deltaAmp < 5000){
+					amp += 0.1*deltaAmp;
+				}
+		}
+		HAL_Delay(100);
 		//OLED_ShowNum(0,0,count,5,2);
 		//旋转编码器测试代码
     /* USER CODE END WHILE */
